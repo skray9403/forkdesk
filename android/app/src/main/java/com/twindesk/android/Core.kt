@@ -196,16 +196,18 @@ class Core private constructor(val ctx: Context) : Link.Events {
     // or a USB cable, it stays as the fallback.
     private val resumeTried = HashMap<String, Long>()
     private fun bleTick() {
+        // Keep BLE ready while USB is carrying the session: either side can take over immediately
+        // when the cable is removed, without waiting for discovery or GATT startup.
         ble.prune()
         if (bleWifiOff && link.connected && net.via == "Wi-Fi") {
             link.dropAlt()
             ble.trim()
             serve.trim()
         }
-        val want = bleOn && ble.allowed() && ble.radioOn && (!link.connected || link.ble)
+        val want = bleOn && ble.allowed() && ble.radioOn && (!link.connected || link.ble || link.wired)
         ble.scan(want)
         if (!bleOn && ble.found.isNotEmpty()) ble.stop()
-        serve.advertise(bleOn && serve.allowed() && ble.radioOn && !link.connected && !peer.connected) // a phone holds the session: computers wait
+        serve.advertise(bleOn && serve.allowed() && ble.radioOn && (!link.connected || link.wired) && !peer.connected) // keep the phone-side GATT path ready over USB
         if (!bleOn && serve.found.isNotEmpty()) serve.stop()
         val h = link.host
         if (link.connected && !link.ble) screen.onWifi()
@@ -363,6 +365,7 @@ class Core private constructor(val ctx: Context) : Link.Events {
         Log.i("TwinDesk", "USB: connecting to ${h.name} through the cable")
         stopReturn()
         resumeUntil = 0
+        triedNet = false // evaluate the current network first, then use the warm BLE path
         wiredNonce = nonce
         link.connect(h, port)
     }
