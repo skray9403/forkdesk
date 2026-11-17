@@ -581,7 +581,7 @@ fun MacSlider(
     }
 }
 
-// The layout relationship is a simple single-choice control, not a custom diagram widget.
+// The layout relationship is a single-choice Material control, not a custom diagram widget.
 @Composable
 fun LayoutPicker(me: String, other: String, side: String, onPick: (String) -> Unit) {
     val options = listOf(
@@ -609,36 +609,5 @@ fun LayoutPicker(me: String, other: String, side: String, onPick: (String) -> Un
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-    }
-}
-
-// The layout picker (the Mac's Cursor page): this device in the middle, a slot on each side for
-// the computer; tap a side to move it there.
-@Composable
-fun LayoutPicker(me: String, other: String, side: String, onPick: (String) -> Unit) {
-    @Composable
-    fun Slot(s: String, modifier: Modifier) {
-        val on = side == s
-        Box(
-            modifier.clip(RoundedCornerShape(8.dp))
-                .background(if (on) pal.accentSoft else Color.Transparent)
-                .border(BorderStroke(if (on) 2.dp else 1.dp, if (on) pal.accent else pal.faint.copy(alpha = 0.6f)), RoundedCornerShape(8.dp))
-                .clickable { onPick(s) },
-            contentAlignment = Alignment.Center,
-        ) { if (on) Text(other, color = pal.accent, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, textAlign = TextAlign.Center, modifier = Modifier.padding(4.dp)) }
-    }
-    Column(Modifier.fillMaxWidth().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Slot("top", Modifier.width(150.dp).height(44.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Slot("left", Modifier.width(90.dp).height(100.dp))
-            Box(
-                Modifier.width(150.dp).height(100.dp).clip(RoundedCornerShape(8.dp)).background(pal.accent),
-                contentAlignment = Alignment.Center,
-            ) { Text(me, color = Color.White, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center, modifier = Modifier.padding(6.dp)) }
-            Slot("right", Modifier.width(90.dp).height(100.dp))
-        }
-        Slot("bottom", Modifier.width(150.dp).height(44.dp))
-        val where = mapOf("left" to tr("to the left of"), "right" to tr("to the right of"), "top" to tr("above"), "bottom" to tr("below"))[side]
-        Text(tr("{other} is {where} {me}. Tap a side to move it.", "other" to other, "where" to where, "me" to me), color = pal.muted, fontSize = 13.sp, textAlign = TextAlign.Center)
     }
 }
