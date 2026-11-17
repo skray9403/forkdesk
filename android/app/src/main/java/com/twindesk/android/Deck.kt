@@ -18,18 +18,12 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledTonalIconButton
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -1448,32 +1442,45 @@ private fun TileEditor(core: Core, d: Deck, t: JSONObject, page: JSONObject, clo
             Column(Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 // The action, and Change.
                 val e = DeckCatalog.entry(action)
-                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(pal.content).clickable { picking = true }.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    DeckGlyph(DeckCatalog.symbolOf(action), pal.text, 22.dp)
-                    Column(Modifier.weight(1f).padding(start = 10.dp)) {
-                        Text(e?.let { tr(it.name(d.platform)) } ?: tr("Label only"), color = pal.text, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                        e?.let { Text(tr(it.desc(d.platform)), color = pal.muted, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis) }
-                    }
-                    Text(tr("Change"), color = pal.accent, fontSize = 13.sp)
-                }
+                ListItem(
+                    headlineContent = { Text(e?.let { tr(it.name(d.platform)) } ?: tr("Label only")) },
+                    supportingContent = e?.let { entry -> { Text(tr(entry.desc(d.platform), maxLines = 2, overflow = TextOverflow.Ellipsis) } },
+                    leadingContent = { DeckGlyph(DeckCatalog.symbolOf(action), MaterialTheme.colorScheme.primary, 22.dp) },
+                    trailingContent = { TextButton(onClick = { picking = true }) { Text(tr("Change")) } },
+                    modifier = Modifier.clickable { picking = true },
+                    colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                )
                 ActionOptions(d, action, page) { kv -> put(*kv) }
                 if (e?.local == true || k == "macro") Text(tr("Set this one up on {name}’s Deck page.", "name" to (core.host?.name ?: "")), color = pal.muted, fontSize = 12.sp)
 
                 OutlinedTextField(label, { label = it.take(40) }, label = { Text(tr("Label")) }, placeholder = { Text(e?.let { tr(it.name(d.platform)) } ?: "") }, singleLine = true)
-                Text(tr("Symbol"), color = pal.muted, fontSize = 12.sp)
+                Text(tr("Symbol"), style = MaterialTheme.typography.titleSmall)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    val auto = icon.isEmpty()
-                    Box(Modifier.size(34.dp).clip(RoundedCornerShape(8.dp)).background(if (auto) pal.accent else pal.content).clickable { icon = "" }, contentAlignment = Alignment.Center) {
-                        Text(tr("Auto"), color = if (auto) Color.White else pal.text, fontSize = 9.sp)
-                    }
-                    for (s in DeckCatalog.SYMBOLS) Box(Modifier.size(34.dp).clip(RoundedCornerShape(8.dp)).background(if (icon == s) pal.accent else pal.content).clickable { icon = s }, contentAlignment = Alignment.Center) {
-                        DeckGlyph(s, if (icon == s) Color.White else pal.text, 18.dp)
-                    }
+                    FilterChip(
+                        selected = icon.isEmpty(),
+                        onClick = { icon = "" },
+                        label = { Text(tr("Auto")) },
+                    )
+                    for (symbol in DeckCatalog.SYMBOLS) FilterChip(
+                        selected = icon == symbol,
+                        onClick = { icon = symbol },
+                        label = { DeckGlyph(symbol, MaterialTheme.colorScheme.onSurface, 18.dp) },
+                    )
                 }
                 OutlinedTextField(if (DeckCatalog.symbol(icon) == null) icon else "", { icon = it.take(16) }, label = { Text(tr("Or an emoji")) }, singleLine = true)
-                Text(tr("Colour"), color = pal.muted, fontSize = 12.sp)
+                Text(tr("Colour"), style = MaterialTheme.typography.titleSmall)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    for (c in DECK_COLORS) Box(Modifier.size(28.dp).clip(CircleShape).background(deckColor(c)).border(if (c == color) 2.5.dp else 0.dp, pal.text, CircleShape).clickable { color = c })
+                    for (c in DECK_COLORS) FilterChip(
+                        selected = c == color,
+                        onClick = { color = c },
+                        label = { Text(c) },
+                        leadingIcon = {
+                            Box(
+                                Modifier.size(18.dp).clip(CircleShape).background(deckColor(c))
+                                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
+                            )
+                        },
+                    )
                 }
                 Text(tr("Size"), color = pal.muted, fontSize = 12.sp)
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -1634,15 +1641,20 @@ private fun ActionPicker(d: Deck, close: () -> Unit, choose: (DeckCatalog.Entry)
                         Text(tr(gname), color = pal.muted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 10.dp, bottom = 4.dp))
                         for (e in list) {
                             val why = if (e.device) null else if (e.k !in d.can) "Not on this computer" else DeckCatalog.available(e, d.caps, d.platform)
-                            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable(enabled = why == null) { choose(e) }.alpha(if (why == null) 1f else 0.45f).padding(horizontal = 8.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically) {
-                                DeckGlyph(DeckCatalog.symbolOf(e.action()), pal.text, 20.dp)
-                                Column(Modifier.weight(1f).padding(start = 10.dp)) {
-                                    Text(tr(e.name(d.platform)), color = pal.text, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                                    Text(why?.let { tr(it) } ?: tr(e.desc(d.platform)), color = pal.muted, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                                    if (e.local) Text(tr("Stays on this computer"), color = pal.accent, fontSize = 11.sp)
-                                }
-                            }
+                            ListItem(
+                                headlineContent = { Text(tr(e.name(d.platform))) },
+                                supportingContent = {
+                                    Column {
+                                        Text(why?.let { tr(it) } ?: tr(e.desc(d.platform)), maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                        if (e.local) Text(tr("Stays on this computer"), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall)
+                                    }
+                                },
+                                leadingContent = { DeckGlyph(DeckCatalog.symbolOf(e.action()), MaterialTheme.colorScheme.onSurfaceVariant, 20.dp) },
+                                modifier = Modifier.fillMaxWidth().alpha(if (why == null) 1f else 0.45f)
+                                    .clickable(enabled = why == null) { choose(e) },
+                                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            )
+                            HorizontalDivider()
                         }
                     }
                 }
