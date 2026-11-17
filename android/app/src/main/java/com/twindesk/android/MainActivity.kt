@@ -508,7 +508,7 @@ private fun Devices(core: Core, v: Int, open: () -> Unit) {
             list.forEachIndexed { index, device ->
                 if (index > 0) HorizontalDivider(Modifier.padding(start = 56.dp))
                 ListItem(
-                    headlineContent = { Text(device.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    content = { Text(device.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                     supportingContent = { Text(device.sub, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                     leadingContent = {
                         Icon(
@@ -546,7 +546,7 @@ private fun MoreList(core: Core, v: Int, BOTTOM: List<Tab>, modifier: Modifier, 
             entries.forEachIndexed { index, tab ->
                 if (index > 0) HorizontalDivider(Modifier.padding(start = 56.dp))
                 ListItem(
-                    headlineContent = { Text(tr(tab.title)) },
+                    content = { Text(tr(tab.title)) },
                     leadingContent = { Icon(tab.icon, contentDescription = null) },
                     supportingContent = if (wifiOnly(core, tab)) {
                         { Text(tr("Wi-Fi Direct"), style = MaterialTheme.typography.bodySmall) }
