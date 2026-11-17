@@ -477,7 +477,7 @@ fun MacDisplayPick(
         displays.forEach { display ->
             FilterChip(
                 selected = display.id == selectedId,
-                onClick = { onPick(display.id) },
+                onClick = { if (display.id != selectedId) onPick(display.id) },
                 label = { Text(display.label(), maxLines = 1, overflow = TextOverflow.Ellipsis) },
             )
         }
