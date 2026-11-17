@@ -1,8 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
-// The building blocks of the app's window, drawn like TwinDesk on the Mac (mac/control.css):
-// the same colours in light and dark, a sidebar of coloured icon tiles in groups, cards of rows
-// (label and hint on the left, the control on the right), page headings with one main switch,
-// the direction cards ("Mac → Tablet") and the layout picker.
+// Shared Material 3 presentation primitives for feature pages, navigation and settings.
 package com.twindesk.android
 
 import androidx.compose.foundation.BorderStroke
@@ -107,10 +104,6 @@ val pal: Palette @Composable get() = LocalPalette.current
 // The look (General › Appearance, as on the computers: shared/look.js): the theme (system, light,
 // dark) and the accent colour, "" following the phone's own (Material You, Android 12+; else blue).
 // A local preference, never synchronized.
-// The Material 3 Expressive look, on the phone and the tablet alike (TwinDesk Web has it too): bigger
-// soft cards without borders, a faint shadow, pill buttons. Off: the older Mac-like one.
-object Modern { var on = true }
-
 object Look {
     val THEMES = listOf("system", "light", "dark")
     val ACCENTS = listOf(0xFF0A84FF, 0xFF5E5CE6, 0xFFBF5AF2, 0xFFFF375F, 0xFFFF453A, 0xFFFF9F0A, 0xFF30D158, 0xFF00C7BE, 0xFF8E8E93)
@@ -129,7 +122,7 @@ object Look {
     fun pickTheme(v: String) { theme = if (v in THEMES) v else "system"; prefs?.edit()?.putString("theme", theme)?.apply() }
     fun pickAccent(v: Long) { accent = v; prefs?.edit()?.putLong("accent", v)?.apply() }
 
-    // The phone's accent colour, for "System".
+    // The device's wallpaper-derived accent for "System".
     fun system(ctx: android.content.Context, dark: Boolean): Color =
         if (android.os.Build.VERSION.SDK_INT >= 31) {
             (if (dark) androidx.compose.material3.dynamicDarkColorScheme(ctx) else androidx.compose.material3.dynamicLightColorScheme(ctx)).primary
@@ -304,7 +297,6 @@ fun NavItem(
 @Composable
 fun AppearanceCard() {
     val ctx = androidx.compose.ui.platform.LocalContext.current
-    val sys = Look.system(ctx, isSystemInDarkTheme())
     val themeOptions = listOf("system" to tr("System"), "light" to tr("Light"), "dark" to tr("Dark"))
     val accentOptions = listOf(
         0L to tr("System"),
