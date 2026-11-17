@@ -227,14 +227,10 @@ class Core private constructor(val ctx: Context) : Link.Events {
         }
         Log.i("TwinDesk", "Bluetooth recovery window: ${(bleFallbackUntil - now).coerceAtLeast(0) / 1000}s")
         if (ble.allowed() && ble.radioOn) runCatching { ble.scan(true) }
-        if (serve.allowed() && serve.radioOn) runCatching { serve.advertise(true) }
+        if (serve.allowed() && ble.radioOn) runCatching { serve.advertise(true) }
     }
-    // Every 2 s: Bluetooth scans while it may be needed (not connected, or connected through it),
-    // and a session through Bluetooth moves onto the network as soon as the computer is seen there
-    // (the same Wi-Fi, or a group Netlink made). On the same Wi-Fi, with General's Turn off Bluetooth
-    // on Wi-Fi connections on, Bluetooth goes altogether (its fallback, then its links): the Wi-Fi
-    // dropping ends the session, which comes back over Bluetooth (resume). On a group Netlink made,
-    // or a USB cable, it stays as the fallback.
+    // Bluetooth is used only for a bounded recovery window after a Wi-Fi/USB session drops,
+    // or as the active session transport. A new Wi-Fi or USB session stops all BLE activity.
     private val resumeTried = HashMap<String, Long>()
     private fun bleTick() {
         ble.prune()
@@ -285,7 +281,7 @@ class Core private constructor(val ctx: Context) : Link.Events {
 
         if (bleOn && bleFallbackUntil > now) {
             if (ble.allowed() && ble.radioOn) ble.scan(true) else ble.scan(false)
-            if (serve.allowed() && serve.radioOn) serve.advertise(true) else serve.advertise(false)
+            if (serve.allowed() && ble.radioOn) serve.advertise(true) else serve.advertise(false)
             return
         }
 
