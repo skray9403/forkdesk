@@ -136,6 +136,8 @@ class Core private constructor(val ctx: Context) : Link.Events {
         if (store.flag("remote.btpad", false)) btPad.start()
         runCatching { bank.start() }.onFailure { Log.e("TwinDesk", "bank", it) }
         bg.scheduleWithFixedDelay({ runCatching { bleTick() }.onFailure { Log.e("TwinDesk", "ble", it) } }, 2, 2, TimeUnit.SECONDS)
+        // A cold start with no active session gets the same bounded BLE discovery window.
+        if (bleOn && !link.connected) beginBleFallback()
         // Quiet links (Link.kt, shared/quiet.js, #143): what keeps the session pinging every second.
         // Clipboard, notifications and cursor sharing switched on don't: their messages go when
         // something happens, and a message makes the link active at once.
@@ -193,6 +195,40 @@ class Core private constructor(val ctx: Context) : Link.Events {
     }
     private fun inBackground() = !reconnectBg && !MainActivity.shown
 
+    fun setBleEnabled(on: Boolean) {
+        store.setFlag("ble", on)
+        if (!on) {
+            bleFallbackUntil = 0L
+            bleFallbackHostId = ""
+            bleFallbackExpiredHostId = ""
+            resumeUntil = 0L
+            resumeHost = null
+            if (link.ble) link.disconnect()
+            bg.execute { runCatching { ble.stop() }; runCatching { serve.stop() } }
+        } else if (!link.connected || link.ble) {
+            beginBleFallback(restart = true)
+        }
+        changed()
+    }
+
+    private fun beginBleFallback(host: Host? = null, restart: Boolean = false) {
+        if (!bleOn || (link.connected && !link.ble)) return
+        val now = System.currentTimeMillis()
+        if (restart || bleFallbackUntil <= now) {
+            bleFallbackUntil = now + BLE_FALLBACK_WINDOW_MS
+            bleFallbackHostId = host?.id.orEmpty()
+            bleFallbackExpiredHostId = ""
+        } else if (host != null && bleFallbackHostId.isEmpty()) {
+            bleFallbackHostId = host.id
+        }
+        if (host != null) {
+            resumeHost = host
+            resumeUntil = bleFallbackUntil
+        }
+        Log.i("TwinDesk", "Bluetooth recovery window: ${(bleFallbackUntil - now).coerceAtLeast(0) / 1000}s")
+        if (ble.allowed() && ble.radioOn) runCatching { ble.scan(true) }
+        if (serve.allowed() && serve.radioOn) runCatching { serve.advertise(true) }
+    }
     // Every 2 s: Bluetooth scans while it may be needed (not connected, or connected through it),
     // and a session through Bluetooth moves onto the network as soon as the computer is seen there
     // (the same Wi-Fi, or a group Netlink made). On the same Wi-Fi, with General's Turn off Bluetooth
