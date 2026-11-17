@@ -142,7 +142,7 @@ fun ArrangeDialog(store: Store, items: List<ArrangeItem>, barNow: Int, onClose: 
                     }
                     if (i > 0) HorizontalDivider(Modifier.padding(start = 56.dp))
                     ListItem(
-                        headlineContent = { Text(item.title, maxLines = 1) },
+                        content = { Text(item.title, maxLines = 1) },
                         leadingContent = { Icon(item.icon, contentDescription = null) },
                         trailingContent = {
                             Row(verticalAlignment = Alignment.CenterVertically) {
