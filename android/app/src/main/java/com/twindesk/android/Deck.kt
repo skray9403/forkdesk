@@ -24,6 +24,9 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -1444,7 +1447,7 @@ private fun TileEditor(core: Core, d: Deck, t: JSONObject, page: JSONObject, clo
                 val e = DeckCatalog.entry(action)
                 ListItem(
                     headlineContent = { Text(e?.let { tr(it.name(d.platform)) } ?: tr("Label only")) },
-                    supportingContent = e?.let { entry -> { Text(tr(entry.desc(d.platform), maxLines = 2, overflow = TextOverflow.Ellipsis) } },
+                    supportingContent = e?.let { entry -> { Text(tr(entry.desc(d.platform)), maxLines = 2, overflow = TextOverflow.Ellipsis) } },
                     leadingContent = { DeckGlyph(DeckCatalog.symbolOf(action), MaterialTheme.colorScheme.primary, 22.dp) },
                     trailingContent = { TextButton(onClick = { picking = true }) { Text(tr("Change")) } },
                     modifier = Modifier.clickable { picking = true },
