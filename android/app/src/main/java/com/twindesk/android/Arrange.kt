@@ -20,9 +20,14 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -34,7 +39,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -127,15 +131,27 @@ fun ArrangeDialog(store: Store, items: List<ArrangeItem>, barNow: Int, onClose: 
                     Text(tr("Search button"), color = pal.text, fontSize = 15.sp, modifier = Modifier.weight(1f))
                     MacSwitch(search, { search = it })
                 }
-                list.forEachIndexed { i, it ->
-                    if (i == bar) Text(tr("Under More"), color = pal.muted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 10.dp, bottom = 4.dp))
-                    Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Tile(it.icon, it.colors, 26)
-                        Text(it.title, color = pal.text, fontSize = 15.sp, maxLines = 1, modifier = Modifier.padding(start = 10.dp).weight(1f))
-                        Step("↑", i > 0) { list.add(i - 1, list.removeAt(i)) }
-                        Spacer(Modifier.size(6.dp))
-                        Step("↓", i < list.lastIndex) { list.add(i + 1, list.removeAt(i)) }
+                list.forEachIndexed { i, item ->
+                    if (i == bar) {
+                        Text(
+                            tr("Under More"),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 4.dp),
+                        )
                     }
+                    if (i > 0) HorizontalDivider(Modifier.padding(start = 56.dp))
+                    ListItem(
+                        headlineContent = { Text(item.title, maxLines = 1) },
+                        leadingContent = { Icon(item.icon, contentDescription = null) },
+                        trailingContent = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Step("↑", i > 0) { list.add(i - 1, list.removeAt(i)) }
+                                Step("↓", i < list.lastIndex) { list.add(i + 1, list.removeAt(i)) }
+                            }
+                        },
+                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                    )
                 }
             }
         },
@@ -151,8 +167,11 @@ fun ArrangeDialog(store: Store, items: List<ArrangeItem>, barNow: Int, onClose: 
 
 @Composable
 private fun Step(label: String, enabled: Boolean, onClick: () -> Unit) {
-    Box(
-        Modifier.size(32.dp).clip(RoundedCornerShape(50)).background(pal.chip).clickable(enabled = enabled, onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) { Text(label, color = if (enabled) pal.text else pal.faint, fontSize = 16.sp) }
+    FilledTonalIconButton(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = Modifier.size(40.dp),
+    ) {
+        Text(label, style = MaterialTheme.typography.titleMedium)
+    }
 }
