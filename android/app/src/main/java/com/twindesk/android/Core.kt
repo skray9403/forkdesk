@@ -60,6 +60,7 @@ class Core private constructor(val ctx: Context) : Link.Events {
     @Volatile private var bleFallbackHostId = ""
     @Volatile private var bleFallbackExpiredHostId = ""
     @Volatile private var establishedTransport = "" // usb | wifi | bluetooth
+    @Volatile private var requestedPhysicalTransport = "" // usb | wifi, until a new route welcomes
 
     val sync = PairSync(this)
     val clip = Clip(this)
@@ -199,6 +200,7 @@ class Core private constructor(val ctx: Context) : Link.Events {
     fun setBleEnabled(on: Boolean) {
         store.setFlag("ble", on)
         if (!on) {
+            requestedPhysicalTransport = ""
             clearBleFallback()
             resumeUntil = 0L
             resumeHost = null
@@ -450,10 +452,14 @@ class Core private constructor(val ctx: Context) : Link.Events {
         val viaBle = seen == null && bleOn && (serve.get(h.id) != null || ble.get(h.id) != null)
         triedNet = !viaBle
         if (viaBle) {
+            requestedPhysicalTransport = ""
             bg.execute {
                 val port = blePipe(h.id)
                 if (port != null) link.connect(h, blePort = port)
-                else if (h.address != "127.0.0.1") link.connect(h)
+                else if (h.address != "127.0.0.1") {
+                    requestedPhysicalTransport = "wifi"
+                    link.connect(h)
+                }
             }
             return
         }
@@ -464,6 +470,7 @@ class Core private constructor(val ctx: Context) : Link.Events {
             val t = Tailnet.address(h)
             if (tailTurn && t != null && t != h.address && Tailnet.onIt()) {
                 Log.i("TwinDesk", "${h.name} isn’t on this network: through Tailscale")
+                requestedPhysicalTransport = "wifi"
                 link.connect(h.copy(address = t))
                 return
             }
@@ -477,12 +484,17 @@ class Core private constructor(val ctx: Context) : Link.Events {
                     val port = Relay.open(r)
                     if (port != null) {
                         Log.i("TwinDesk", "${h.name} isn’t on this network: through its relay")
+                        requestedPhysicalTransport = "wifi"
                         link.connect(h.copy(address = "127.0.0.1", port = port))
-                    } else link.connect(h)
+                    } else {
+                        requestedPhysicalTransport = "wifi"
+                        link.connect(h)
+                    }
                 }
                 return
             }
         }
+        requestedPhysicalTransport = "wifi"
         link.connect(h)
     }
     @Volatile private var tailTurn = false
@@ -524,7 +536,8 @@ class Core private constructor(val ctx: Context) : Link.Events {
         Log.i("TwinDesk", "USB: connecting to ${h.name} through the cable")
         stopReturn()
         resumeUntil = 0
-        triedNet = false // evaluate the current network first, then use the warm BLE path
+        triedNet = false // evaluate the current network first, then use the BLE fallback if needed
+        requestedPhysicalTransport = "usb"
         wiredNonce = nonce
         link.connect(h, port)
     }
@@ -563,6 +576,7 @@ class Core private constructor(val ctx: Context) : Link.Events {
         clearBleFallback()
         clearActiveTransport()
         establishedTransport = ""
+        requestedPhysicalTransport = ""
         resumeUntil = 0
         resumeHost = null
         resumeLater = null
@@ -660,6 +674,7 @@ class Core private constructor(val ctx: Context) : Link.Events {
         resumeHost = null
         rememberReturn(host, link.sessionMarker())
         resumeUntil = 0
+        requestedPhysicalTransport = ""
         if (link.ble) {
             ble.scan(false)
             serve.advertise(false)
@@ -700,14 +715,16 @@ class Core private constructor(val ctx: Context) : Link.Events {
             changed()
         }
         val wasEstablished = establishedTransport.isNotEmpty()
+        val handoffToPhysical = requestedPhysicalTransport.isNotEmpty() && code == "local"
         establishedTransport = ""
         clearActiveTransport()
         val accidental = code == null || code !in setOf("local", "paused", "reclaim", "bad_message", Proto.E.VERSION_MISMATCH, Proto.E.RELEASED, Proto.E.REPLACED, Proto.E.BAD_TOKEN, Proto.E.BUSY, Proto.E.ASLEEP)
 
-        // A dropped live Wi-Fi, USB or Bluetooth session starts one new five-minute window.
-        // Failed reconnect attempts do not extend an existing deadline; intentional closes cancel it.
-        if (wasEstablished && accidental) beginBleFallback(host, restart = true)
-        else if (!accidental) clearBleFallback()
+        // A dropped live route starts a five-minute window. When replacing Bluetooth with a new
+        // USB/Wi-Fi route, keep BLE ready until that new route actually welcomes successfully.
+        if (wasEstablished && (accidental || handoffToPhysical)) beginBleFallback(host, restart = true)
+        else if (!accidental && !handoffToPhysical) clearBleFallback()
+        if (!wasEstablished) requestedPhysicalTransport = ""
         if (!wasEstablished && bleFallbackExpiredHostId == host.id) return
 
         // Capable Macs retain their non-takeover LAN reclaim path. During the BLE window,
