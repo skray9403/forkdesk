@@ -170,7 +170,7 @@ object SearchIndex {
         Entry("Mouse and keyboard", { tr("Mouse and keyboard") }, "Permissions", "General", ""),
         Entry("This device", { tr("This device") }, "", "General", ""),
         Entry("Network and Bluetooth", { tr("Network and Bluetooth") }, "", "General", ""),
-        Entry("Turn off Bluetooth on Wi-Fi connections", { tr("Turn off Bluetooth on Wi-Fi connections") }, "Network and Bluetooth", "General", ""),
+        Entry("Bluetooth fallback", { tr("Bluetooth fallback") }, "Network and Bluetooth", "General", ""),
         Entry("Wi-Fi Direct", { tr("Wi-Fi Direct") }, "Network and Bluetooth", "General", ""),
         Entry("Paired computers", { tr("Paired computers") }, "", "General", ""),
         Entry("Linked with Android", { tr("Linked with Android") }, "", "General", ""),
