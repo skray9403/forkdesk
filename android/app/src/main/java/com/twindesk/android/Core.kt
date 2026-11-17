@@ -217,16 +217,20 @@ class Core private constructor(val ctx: Context) : Link.Events {
     }
 
     private fun clearBleFallback(resetExpired: Boolean = true) {
+        val stored = transportPrefs.contains("ble_fallback_until") || transportPrefs.contains("ble_fallback_host")
+        val changed = bleFallbackUntil != 0L || bleFallbackHostId.isNotEmpty()
         bleFallbackUntil = 0L
         bleFallbackHostId = ""
         if (resetExpired) bleFallbackExpiredHostId = ""
-        transportPrefs.edit()
+        // bleTick runs every two seconds; do not synchronously write the same empty state every tick.
+        if (stored || changed) transportPrefs.edit()
             .remove("ble_fallback_until")
             .remove("ble_fallback_host")
             .commit()
     }
 
     private fun clearActiveTransport() {
+        if (!transportPrefs.contains("active_transport") && !transportPrefs.contains("active_host_id")) return
         transportPrefs.edit()
             .remove("active_transport")
             .remove("active_host_id")
