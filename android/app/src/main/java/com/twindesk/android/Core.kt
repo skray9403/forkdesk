@@ -17,6 +17,8 @@ import org.json.JSONObject
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
+private const val BLE_FALLBACK_WINDOW_MS = 5 * 60 * 1000L
+
 abstract class Feature(val core: Core) {
     open fun onWelcome(host: Host) {}
     open fun onClosed() {}
@@ -37,7 +39,6 @@ class Core private constructor(val ctx: Context) : Link.Events {
     val ble = Ble(ctx, { JSONObject().put("id", store.deviceId).put("name", store.deviceName).put("os", Proto.OS) },
         { id -> store.hosts().any { it.id == id } }, ::changed, ::onInvite)
     val bleOn get() = store.flag("ble", true)
-    val bleWifiOff get() = store.flag("bleWifiOff", true) // General's Turn off Bluetooth on Wi-Fi connections (bleTick)
     // … and PCs that connect to us: this phone advertises (BleServe.kt), as a PC's Bluetooth often can't.
     val serve = BleServe(ctx, { JSONObject().put("id", store.deviceId).put("name", store.deviceName).put("os", Proto.OS) }, ::changed, ::onServeOpen)
     init {
@@ -54,6 +55,10 @@ class Core private constructor(val ctx: Context) : Link.Events {
     @Volatile private var returnGeneration = 0
     @Volatile private var returnAfter = 0L
     private var returnFailures = 0
+    @Volatile private var bleFallbackUntil = 0L
+    @Volatile private var bleFallbackHostId = ""
+    @Volatile private var bleFallbackExpiredHostId = ""
+    @Volatile private var establishedTransport = "" // usb | wifi | bluetooth
 
     val sync = PairSync(this)
     val clip = Clip(this)
