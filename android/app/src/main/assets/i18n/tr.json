@@ -101,7 +101,6 @@
   "Bluetooth gamepad · {name}": "Bluetooth oyun kumandası · {name}",
   "Bluetooth is off on this device": "Bu cihazda Bluetooth kapalı",
   "Bluetooth is off on this phone": "Bu telefonda Bluetooth kapalı",
-  "Bluetooth stays on as a fallback if Wi-Fi drops": "Wi-Fi kesilirse yedek olarak Bluetooth açık kalır",
   "Bluetooth stopped: turn it on again": "Bluetooth durdu: yeniden açın",
   "Bluetooth with computers": "Bilgisayarlarla Bluetooth",
   "Both ways": "Her iki yönde",
@@ -945,7 +944,6 @@
   "Try a new code.": "Yeni bir kod deneyin.",
   "Try again": "Tekrar dene",
   "Try “share pc audio to phone”, “dark mode” or “send a file”": "“bilgisayar sesini telefona paylaş”, “karanlık mod” veya “dosya gönder” deneyin",
-  "Turn off Bluetooth on Wi-Fi connections": "Wi-Fi bağlantılarında Bluetooth'u kapat",
   "Turn off Developer options": "Geliştirici seçeneklerini kapat",
   "Turn off USB and wireless debugging in Developer options if {app} still refuses to open.": "{app} hâlâ açılmıyorsa Geliştirici seçeneklerinde USB ve kablosuz hata ayıklamayı kapatın.",
   "Turn off wireless debugging when disconnected": "Bağlantı kesilince kablosuz hata ayıklamayı kapat",
@@ -1036,7 +1034,6 @@
   "Where {name} is": "{name} nerede",
   "Which are in the bottom bar, and in what order. Or hold the bar": "Hangileri alt çubukta ve hangi sırayla. Ya da çubuğa basılı tutun",
   "While TwinDesk is open, or at any time with wireless debugging": "TwinDesk açıkken ya da kablosuz hata ayıklamayla her zaman",
-  "While connected to {name} over the same Wi-Fi network": "{name} cihazına aynı Wi-Fi ağı üzerinden bağlıyken",
   "Wi-Fi": "Wi-Fi",
   "Wi-Fi Direct": "Wi-Fi Direct",
   "Wi-Fi Direct couldn’t start": "Wi-Fi Direct başlatılamadı",
@@ -1241,5 +1238,7 @@
   "Purple": "Mor",
   "Red": "Kırmızı",
   "Teal": "Camgöbeği",
-  "{other} is {where} {me}.": "{other}, {me} öğesinin {where} tarafında."
+  "{other} is {where} {me}.": "{other}, {me} öğesinin {where} tarafında.",
+  "Bluetooth fallback": "Bluetooth yedek bağlantısı",
+  "After Wi-Fi or USB disconnects, searches nearby for 5 minutes. A Bluetooth session stays connected until Wi-Fi or USB returns.": "Wi-Fi veya USB bağlantısı kesildikten sonra 5 dakika boyunca yakındaki cihazları arar. Bir Bluetooth oturumu kurulursa Wi-Fi veya USB yeniden bağlanana kadar sürer."
 }
