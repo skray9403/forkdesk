@@ -16,8 +16,6 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
@@ -39,6 +37,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -151,10 +150,9 @@ fun HistoryCard(core: Core, what: String) {
             tr("{count} items", "count" to (if (what == "clip") h.clip() else h.notifs()).size),
             first = true,
         ) {
-            Button(
-                onClick = { History.view.value = what }, shape = RoundedCornerShape(50), elevation = null, modifier = Modifier.height(40.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = pal.chip, contentColor = pal.text),
-            ) { Text(tr("Open"), fontSize = 14.sp) }
+            FilledTonalButton(onClick = { History.view.value = what }) {
+                Text(tr("Open"))
+            }
         }
         SwitchRow(tr("Keep history"), if (h.save) tr("Encrypted on this device, with a key only TwinDesk can use") else tr("Off: forgotten when TwinDesk quits"), h.save) { h.setSave(it) }
         if (h.save) {
