@@ -169,7 +169,7 @@ fun SearchScreen(pages: List<Pair<String, String>>, go: (String) -> Unit) {
         LazyColumn(Modifier.fillMaxWidth().weight(1f)) {
             itemsIndexed(found) { index, item ->
                 ListItem(
-                    headlineContent = {
+                    content = {
                         Text(item.title, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     },
                     supportingContent = {
