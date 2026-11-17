@@ -102,6 +102,7 @@ namespace MacShare
 #endif
             Emit(ready);
             Application.Run(new ApplicationContext());
+            NativeTray.Dispose();
             return 0;
         }
 
@@ -283,6 +284,9 @@ namespace MacShare
                 switch (cmd)
                 {
                     case "ping": case "keepalive": break;
+                    case "trayInit": NativeTray.Init(); break;
+                    case "trayUpdate": NativeTray.Update(c); break;
+                    case "trayShow": NativeTray.ShowMenu(); break;
                     case "kvmConfig":
                         capture.TakeBack = Json.Bool(c, "takeBack", true);
 #if MULTI

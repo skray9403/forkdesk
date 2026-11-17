@@ -1,6 +1,15 @@
 name: Build Windows
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'windows/**'
+      - 'windows-helper/**'
+      - 'shared/**'
+      - 'native/**'
+      - '.github/workflows/build-windows.yml'
+      - '.github/actions/android-full/**'
   workflow_dispatch:
     inputs:
       ref:
@@ -81,13 +90,13 @@ jobs:
       # The app's version: SignPath checks that the installers' product version matches it.
       - name: Version
         id: version
-        if: inputs.signing != 'none'
+        if: github.event_name == 'workflow_dispatch' && inputs.signing != 'none'
         shell: bash
         run: echo "version=$(node -p "require('./windows/package.json').version")" >> "$GITHUB_OUTPUT"
 
       - name: Upload the unsigned installers for signing
         id: upload-unsigned
-        if: inputs.signing != 'none'
+        if: github.event_name == 'workflow_dispatch' && inputs.signing != 'none'
         uses: actions/upload-artifact@v4
         with:
           name: twindesk-windows-unsigned
@@ -95,7 +104,7 @@ jobs:
           if-no-files-found: error
 
       - name: Sign the installers (SignPath)
-        if: inputs.signing != 'none'
+        if: github.event_name == 'workflow_dispatch' && inputs.signing != 'none'
         uses: signpath/github-action-submit-signing-request@v3
         with:
           api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
@@ -115,7 +124,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p windows/out
-          if [ "${{ inputs.signing }}" != "none" ]; then
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.signing }}" != "none" ]; then
             cp windows/signed/TwinDesk-Setup-*.exe windows/out/
           else
             cp windows/dist/TwinDesk-Setup-*.exe windows/out/

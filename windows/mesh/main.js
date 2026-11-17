@@ -122,6 +122,10 @@ let mainWin = null;
 let tray = null;
 let trayKey = '';
 let trayLight = false; // the taskbar is light: black tray glyph
+let nativeTrayAvailable = false;
+let trayInitPending = false;
+const trayActions = new Map();
+let trayActionSequence = 0;
 let hud = null;
 let about = null; // shared/about.js, read once for the About page
 let quitting = false;
@@ -205,6 +209,7 @@ function loadDevice() {
 
 function start() {
   device = loadDevice();
+  const firstRun = !store.read('settings.json', null);
   settings = loadSettings(store); // settings.json and the mesh's own in multi.json (settings.js)
   modulesAtStart = require('../../shared/modules.js').normalize(settings.modules).off.filter((id) => id !== 'multi'); // the window's scripts are fixed at load
   require('../../shared/edition.js').moduleOff(modulesAtStart.includes('fullkvm')); // General › Modules › Full KVM, before the helper is made
@@ -292,6 +297,7 @@ function start() {
   loadMic();
   smb = new Smb({ link, settings, save: saveSettings, onChange: pushState });
   helper = new Helper();
+  helper.on('event', (name, message) => { if (name === 'trayAction') handleNativeTrayAction(message); });
   require('../../shared/web/pcmedia.js').PcMedia.useHelper((cmd, args) => helper.request(cmd, args, 8000)); // what plays, without PowerShell
   if (require('../../shared/edition.js').fullKvm()) require('../fullkvm/manager.js').attach({ helper }); // the Full KVM build: its tab and service (docs/full-kvm.md)
   fileRecv = new FileRecv({ link, helper, settings, onChange: pushState });
@@ -436,10 +442,18 @@ function start() {
     if (!meshMoves.ready(to, (v) => { pcApps.macAccepts = v; })) return;
     pcApps.moveOut(wid, { x: Number(m.fromX), y: Number(m.fromY) }).then((ok) => ok || console.log(`[apps] window not moved: ${pcApps.macAccepts ? 'it can’t go (Bluetooth, gone, already there)' : 'Move windows is off on the other computer'}`));
   };
-  helper.on('exit', pushState);
+  helper.on('exit', (code) => {
+    nativeTrayAvailable = false;
+    trayInitPending = false;
+    if (code === -1) createFallbackTray();
+    pushState();
+  });
   setupNet();
   helper.start();
-  helper.once('ready', () => vdd.check()); // switches a virtual monitor left on by a crash off
+  helper.on('ready', () => {
+    vdd.check(); // switches a virtual monitor left on by a crash off
+    initializeNativeTray();
+  });
   // New releases on GitHub: a notification once per version, the tray item and About › Updates.
   // TwinDesk Portable (portable.js): a new version is downloaded by the browser, never installed by itself.
   updates = new Updates({
@@ -471,7 +485,7 @@ function start() {
     bus: hub.bus,
     peerRole: (id) => { const s = hub.sessions.get(id); return s ? s.role : null; },
     peerOs: (id) => { const s = hub.sessions.get(id); return s ? s.peerOs : null; } }); // Two-way switches per pair (no ReZume or Remote here)
-  nativeTheme.on('updated', () => { checkTaskbar(); pushState(); });
+  nativeTheme.on('updated', () => pushState());
   link.start();
 
   link.on('welcome', () => { // a pinned Mac app started while the Mac wasn't connected
@@ -479,7 +493,7 @@ function start() {
     pendingMacApp = null;
   });
   createTray();
-  createMainWindow();
+  if (!startHidden && firstRun) createMainWindow(); // returning users start in the native tray flyout
   if (!openLink(process.argv) && !sendTo.handle(process.argv) && !openMacAppArg(process.argv)) openPhoneAppArg(process.argv);
   setTimeout(checkFirewall, 3000);
   if (process.argv.includes('--test-monitor')) screen.open(true); // dev: ?test=1 pattern
@@ -1338,36 +1352,77 @@ function showUpdateWindow() {
   }
 }
 
-// Tray: the app mark's two screens, white on a dark
-// taskbar and black on a light one. Its menu by kind (shared/traymenu.js); only connecting while
-// nothing is connected.
+// The native Windows notification-area icon and flyout live in the existing C# helper process.
+// This avoids keeping an Electron tray implementation alive and needs no additional runtime.
 function trayIcon() {
   const name = trayLight ? 'tray-black' : 'tray-white';
   const img = nativeImage.createFromPath(path.join(__dirname, '..', 'assets', name + '.png'));
   img.addRepresentation({ scaleFactor: 2, buffer: nativeImage.createFromPath(path.join(__dirname, '..', 'assets', name + '@2x.png')).toPNG() });
   return img;
 }
-
-// The taskbar follows "Windows mode" (SystemUsesLightTheme), not the apps' light/dark.
 function checkTaskbar() {
-  execFile('reg', ['query', 'HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize', '/v', 'SystemUsesLightTheme'], { windowsHide: true }, (err, out) => {
-    const light = !err && /SystemUsesLightTheme\s+REG_DWORD\s+0x1\b/.test(out);
+  execFile('reg', ['query', 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize', '/v', 'SystemUsesLightTheme'], { windowsHide: true }, (err, out) => {
+    const light = !err && /SystemUsesLightTheme\\s+REG_DWORD\\s+0x1\\b/.test(out);
     if (light === trayLight) return;
     trayLight = light;
     if (tray) tray.setImage(trayIcon());
   });
 }
-
-function createTray() {
+function createFallbackTray() {
+  if (tray || nativeTrayAvailable) return;
   tray = new Tray(trayIcon());
   tray.setToolTip('TwinDesk');
-  tray.on('click', showMain);
+  tray.on('click', () => tray && tray.popUpContextMenu());
   checkTaskbar();
+  trayKey = '';
   updateTray();
+}
+function createTray() {
+  // The helper's ready event initializes the native icon. Keep Electron as a fallback.
+  if (!helper || !helper.running) createFallbackTray();
+}
+function nativeTrayItems(template) {
+  trayActions.clear();
+  const convert = (items) => (items || []).filter(Boolean).map((item) => {
+    if (item.type === 'separator' || item.sep) return { type: 'separator' };
+    const id = typeof item.click === 'function' ? 'a' + (++trayActionSequence) : '';
+    if (id) trayActions.set(id, item);
+    const children = Array.isArray(item.submenu) ? convert(item.submenu) : null;
+    return {
+      type: children ? 'submenu' : item.type === 'checkbox' ? 'checkbox' : 'item',
+      id, label: String(item.label || ''), checked: item.checked === true,
+      enabled: item.enabled !== false, items: children || [],
+    };
+  });
+  return convert(template);
+}
+function handleNativeTrayAction(message) {
+  if (!message || typeof message.id !== 'string') return;
+  const item = trayActions.get(message.id);
+  if (!item || typeof item.click !== 'function') return;
+  try {
+    if (item.type === 'checkbox') item.click({ checked: message.checked === true });
+    else item.click();
+  } catch (e) { console.warn('[tray] action failed:', e && e.message || e); }
+}
+function initializeNativeTray() {
+  if (nativeTrayAvailable || trayInitPending || !helper || !helper.running) return;
+  trayInitPending = true;
+  helper.request('trayInit', {}, 3000).then(() => {
+    trayInitPending = false;
+    nativeTrayAvailable = true;
+    if (tray) { tray.destroy(); tray = null; }
+    trayKey = '';
+    updateTray();
+  }).catch((e) => {
+    trayInitPending = false;
+    console.warn('[tray] native flyout unavailable:', e && e.message || e);
+    createFallbackTray();
+  });
 }
 
 function updateTray(s = buildState()) {
-  if (!tray) return;
+  if (!nativeTrayAvailable && !tray) return;
   const connected = s.link.state === 'connected';
   const name = connected && s.peer ? s.peer.name : '';
   const k = settings.kvm;
@@ -1375,7 +1430,7 @@ function updateTray(s = buildState()) {
   const sharing = s.pcScreen.mode !== 'off';
   const found = s.found.filter((d) => !s.peer || d.id !== s.peer.id);
   const rtt = connected && s.link.rtt != null ? ' · ' + s.link.rtt + ' ms' : '';
-  tray.setToolTip('TwinDesk: ' + statusLine(s));
+  const tooltip = 'TwinDesk: ' + statusLine(s);
   // Rebuild only when something in the menu changed (state pushes are frequent).
   const watching = screen.sentAccept === true;
   const host = s.paired && s.paired.macName;
@@ -1392,7 +1447,7 @@ function updateTray(s = buildState()) {
     pushState();
   };
   const kind = (os) => (os === 'mac' ? 'Mac' : os === 'linux' ? 'Linux' : os === 'ios' ? 'iPhone' : os === 'android' ? t('Phone') : 'PC');
-  tray.setContextMenu(Menu.buildFromTemplate(trayMenu.template({
+  const template = trayMenu.template({
     off: modulesAtStart, // General › Modules: menus of modules that are off aren't there
     t,
     connected,
@@ -1429,7 +1484,13 @@ function updateTray(s = buildState()) {
     open: showMain,
     log: () => require('../../shared/applog.js').open(),
     quit: () => app.quit(),
-  })));
+  });
+  if (nativeTrayAvailable && helper && helper.running) {
+    helper.send('trayUpdate', { items: nativeTrayItems(template), tooltip });
+  } else if (tray) {
+    tray.setToolTip(tooltip);
+    tray.setContextMenu(Menu.buildFromTemplate(template));
+  }
 }
 
 // Audio › Microphone: loaded the first time one of its switches is on (each change applies it).
