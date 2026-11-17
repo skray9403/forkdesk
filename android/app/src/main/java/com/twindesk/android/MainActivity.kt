@@ -809,21 +809,19 @@ private fun openCamera(ctx: android.content.Context) {
     runCatching { ctx.startActivity(Intent(android.provider.MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
 }
 
-// Bluetooth with computers (Overview and General, as on the computers): for one that isn't on this
-// network. Off by itself while the session is on the same Wi-Fi, on again when that drops (Core.bleTick).
+// Bluetooth with computers: a five-minute recovery window after a wired/Wi-Fi session drops.
+// An established Bluetooth session stays up until a wired/Wi-Fi session takes over (Core.bleTick).
 @Composable
 private fun BleSwitch(core: Core, askHint: String, first: Boolean = false, revision: Int = 0) {
     @Suppress("UNUSED_EXPRESSION") revision // General also refreshes after system Settings
     @Suppress("UNUSED_VARIABLE") val v = core.version.collectAsState().value // redraw on Core changes (Compose skips it otherwise: same core); read here, so it subscribes
     val ctx = LocalContext.current
     val name = them(core)
-    val link = core.link
     val allowed = (Ble.permissions() + BleServe.permissions() + Direct.permission()).all { ctx.checkSelfPermission(it) == android.content.pm.PackageManager.PERMISSION_GRANTED }
     SwitchRow(tr("Bluetooth with computers"), when {
         !core.bleOn -> tr("Off: only computers on this network or on USB")
         !core.ble.radioOn -> tr("Bluetooth is off on this device")
         !allowed -> askHint
-        core.bleWifiOff && link.connected && core.net.via == "Wi-Fi" -> tr("Paused while on the same Wi-Fi as {name}; resumes if Wi-Fi drops", "name" to name)
         else -> tr("Connects to {name} when it isn’t on this network. Files and screens use a temporary Wi-Fi Direct link", "name" to name)
     }, core.bleOn, first = first) { core.setBleEnabled(it) }
 }
