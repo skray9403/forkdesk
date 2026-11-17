@@ -407,7 +407,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessagesBrowse(peer: 
     LazyColumn(Modifier.fillMaxWidth()) {
         items(r.optJSONArray("items").objects()) { thread ->
             ListItem(
-                headlineContent = {
+                content = {
                     Text(
                         thread.optString("name"),
                         fontWeight = if (thread.optBoolean("unread")) FontWeight.Bold else FontWeight.Normal,
@@ -564,7 +564,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.FilesBrowse(peer: Pee
             val dir = file.optBoolean("dir")
             val itemPath = if (path.isEmpty()) file.optString("name") else "$path/${file.optString("name")}"
             ListItem(
-                headlineContent = {
+                content = {
                     Text(file.optString("name"), maxLines = 1, overflow = TextOverflow.Ellipsis)
                 },
                 supportingContent = {
