@@ -21,15 +21,18 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -105,30 +108,35 @@ fun SetupScreen(core: Core, ctx: Context, v: Int, done: () -> Unit) {
                 color = pal.muted, fontSize = 14.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 6.dp, bottom = 22.dp),
             )
             MacCard {
-                items.forEachIndexed { i, it ->
-                    Column {
-                        if (i > 0) Box(Modifier.padding(start = 58.dp).fillMaxWidth().height(1.dp).background(pal.line))
-                        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Tile(it.icon, it.colors, 30)
-                            Column(Modifier.weight(1f).padding(start = 12.dp, end = 10.dp)) {
-                                Text(it.title + if (it.required) "" else tr(" (optional)"), color = pal.text, fontSize = 15.sp)
-                                Text(it.hint, color = pal.muted, fontSize = 12.5.sp)
-                            }
-                            if (it.done) Pill(tr("Allowed"), "good")
-                            else Button(
-                                onClick = { SetupCheck.open(ctx, core, it.id) { askNotify.launch(Manifest.permission.POST_NOTIFICATIONS) } },
-                                colors = ButtonDefaults.buttonColors(containerColor = pal.accent, contentColor = Color.White), shape = RoundedCornerShape(8.dp),
-                            ) { Text(if (it.id == "adb") tr("Turn on") else tr("Allow")) }
-                        }
-                    }
+                items.forEachIndexed { index, item ->
+                    if (index > 0) HorizontalDivider(Modifier.padding(start = 56.dp))
+                    ListItem(
+                        headlineContent = {
+                            Text(item.title + if (item.required) "" else tr(" (optional)"))
+                        },
+                        supportingContent = { Text(item.hint) },
+                        leadingContent = {
+                            Icon(item.icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        },
+                        trailingContent = {
+                            if (item.done) Pill(tr("Allowed"), "good")
+                            else FilledTonalButton(
+                                onClick = {
+                                    SetupCheck.open(ctx, core, item.id) {
+                                        askNotify.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                    }
+                                },
+                            ) { Text(if (item.id == "adb") tr("Turn on") else tr("Allow")) }
+                        },
+                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                    )
                 }
             }
             Spacer(Modifier.height(8.dp))
             Button(
                 onClick = { if (ready) done() else SetupCheck.skip(ctx, core) },
-                modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = pal.accent, contentColor = Color.White),
-            ) { Text(if (ready) tr("Continue") else tr("Skip for now"), modifier = Modifier.padding(vertical = 4.dp)) }
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text(if (ready) tr("Continue") else tr("Skip for now")) }
             if (!ready) Text(tr("These are optional. Without them, some features are unavailable."), color = pal.faint, fontSize = 12.5.sp, modifier = Modifier.padding(top = 8.dp))
         }
     }
