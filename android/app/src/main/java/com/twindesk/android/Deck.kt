@@ -22,6 +22,12 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Surface
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -94,6 +100,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
@@ -113,6 +120,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.luminance
@@ -340,9 +348,8 @@ fun DeckPage(core: Core, v: Int) {
         return
     }
     androidx.compose.material3.Button(
-        onClick = { DeckActivity.open(ctx) }, shape = RoundedCornerShape(14.dp),
-        colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = pal.accent, contentColor = Color.White),
-        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp).height(52.dp),
+        onClick = { DeckActivity.open(ctx) },
+        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
     ) {
         Icon(Ico.deck, null, modifier = Modifier.size(18.dp))
         Text(tr("Open Deck"), fontSize = 16.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 8.dp))
@@ -385,9 +392,11 @@ private fun DeckEditor(core: Core, d: Deck) {
             if (spaces.size > 1) Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 for (s in spaces) {
                     val on = s === space
-                    Box(Modifier.clip(RoundedCornerShape(50)).background(if (on) pal.accent else pal.card).clickable { spaceId = s.optString("id") }.padding(horizontal = 12.dp, vertical = 6.dp)) {
-                        Text(s.str("name", 30), color = if (on) Color.White else pal.text, fontSize = 13.sp, maxLines = 1)
-                    }
+                    FilterChip(
+                        selected = on,
+                        onClick = { spaceId = s.optString("id") },
+                        label = { Text(s.str("name", 30), maxLines = 1) },
+                    )
                 }
             }
             TileSpace(core, d, space, pageOf, editing = true, full = false) { }
@@ -742,16 +751,16 @@ private fun ColumnScope.TileSpace(core: Core, d: Deck, space: JSONObject, pageOf
     // The pages by name; editing: + adds one.
     if (!full) Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         pages.forEachIndexed { i, p ->
-            val on = i == pager.currentPage
-            Box(Modifier.clip(RoundedCornerShape(50)).background(if (on) pal.text.copy(alpha = 0.14f) else Color.Transparent).border(1.dp, pal.line, RoundedCornerShape(50))
-                .clickable { toPage(i) }.padding(horizontal = 12.dp, vertical = 5.dp)) {
-                Text(p.str("name", 30), color = pal.text, fontSize = 12.5.sp, maxLines = 1, fontWeight = if (on) FontWeight.SemiBold else null)
-            }
+            FilterChip(
+                selected = i == pager.currentPage,
+                onClick = { toPage(i) },
+                label = { Text(p.str("name", 30), maxLines = 1) },
+            )
         }
-        if (editing) Box(Modifier.clip(RoundedCornerShape(50)).border(1.dp, pal.line, RoundedCornerShape(50)).clickable {
+        if (editing) FilledTonalIconButton(onClick = {
             d.edit { l -> spaceIn(l, sid)?.optJSONArray("pages")?.put(JSONObject().put("id", newId("p")).put("name", tr("Page {n}", "n" to (pages.size + 1))).put("cols", 4).put("rows", 4).put("tiles", JSONArray())) }
             scope.launch { delay(50); pager.animateScrollToPage(pages.size) }
-        }.padding(horizontal = 12.dp, vertical = 5.dp)) { Text("+", color = pal.text, fontSize = 12.5.sp) }
+        }) { Icon(Ico.plus, contentDescription = tr("Add page")) }
     }
 
     // The grid fills the screen: each page's cells as wide and tall as its columns and rows allow.
@@ -845,12 +854,10 @@ private fun TileView(d: Deck, t: JSONObject, cw: Dp, ch: Dp, gap: Dp, editing: B
     val slider = a.optString("k") == "slider" && !editing && runs
     var drag by remember(id) { mutableStateOf<Float?>(null) }
     val value = drag ?: level(a, d.state)
-    Box(
-        Modifier.offset(x = (cw + gap) * t.optInt("x"), y = (ch + gap) * t.optInt("y"))
+    Surface(
+        modifier = Modifier.offset(x = (cw + gap) * t.optInt("x"), y = (ch + gap) * t.optInt("y"))
             .size(cw * w + gap * (w - 1), ch * h + gap * (h - 1))
             .alpha(if (runs) 1f else 0.4f)
-            .clip(RoundedCornerShape(16.dp)).background(bg)
-            .border(if (failed) 2.dp else 0.dp, if (failed) pal.bad else Color.Transparent, RoundedCornerShape(16.dp))
             .then(if (slider) Modifier.pointerInput(id) {
                 val at = { x: Float -> (x / size.width.coerceAtLeast(1)).coerceIn(0f, 1f) }
                 detectHorizontalDragGestures(
@@ -859,10 +866,15 @@ private fun TileView(d: Deck, t: JSONObject, cw: Dp, ch: Dp, gap: Dp, editing: B
                 ) { ch, _ -> ch.consume(); val v = at(ch.position.x); drag = v; d.set(id, v) }
             }.pointerInput(id + "tap") {
                 detectTapGestures { o -> d.set(id, (o.x / size.width).coerceIn(0f, 1f)); drag = null }
-            } else Modifier.clickable(onClick = onTap))
-            .padding(if (w == 1 && h == 1) 6.dp else 12.dp),
+            } else Modifier.clickable(onClick = onTap),
+        shape = MaterialTheme.shapes.large,
+        color = bg,
+        contentColor = fg,
+        border = if (failed) BorderStroke(2.dp, pal.bad) else null,
+        tonalElevation = 0.dp,
     ) {
-        if (a.optString("k") == "widget") { WidgetFace(d, a, fg, w, h); return@Box }
+        Box(Modifier.fillMaxSize().padding(if (w == 1 && h == 1) 6.dp else 12.dp)) {
+        if (a.optString("k") == "widget") { WidgetFace(d, a, fg, w, h); return@Surface }
         val sub = if (slider) value?.let { "${(it * 100).roundToInt()}%" } ?: "" else stateText(a, d.state)
         val iconSize = if (w == 1 && h == 1) 24.dp else 28.dp
         if (w == 1) Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
@@ -880,6 +892,7 @@ private fun TileView(d: Deck, t: JSONObject, cw: Dp, ch: Dp, gap: Dp, editing: B
             if (a.optString("k") == "slider") Box(Modifier.padding(top = 8.dp).fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)).background(fg.copy(alpha = 0.22f))) {
                 Box(Modifier.fillMaxWidth(value ?: 0f).fillMaxHeight().background(fg.copy(alpha = 0.95f)))
             }
+        }
         }
     }
 }
@@ -1302,9 +1315,8 @@ private fun shelfView(d: Deck, sets: List<JSONObject>, shelf: Boolean, setShelf:
 }
 
 @Composable
-private fun Chip(text: String, accent: Boolean = false, onClick: () -> Unit) = Box(
-    Modifier.clip(RoundedCornerShape(50)).background(if (accent) pal.accent else pal.card).clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 8.dp),
-) { Text(text, color = if (accent) Color.White else pal.text, fontSize = 12.sp, fontWeight = FontWeight.Medium, maxLines = 1) }
+private fun Chip(text: String, accent: Boolean = false, onClick: () -> Unit) =
+    FilterChip(selected = accent, onClick = onClick, label = { Text(text, maxLines = 1) })
 
 // A small picture of zones on a display, each with its app's icon (a zone with no app left free).
 @Composable
@@ -1434,32 +1446,45 @@ private fun TileEditor(core: Core, d: Deck, t: JSONObject, page: JSONObject, clo
             Column(Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 // The action, and Change.
                 val e = DeckCatalog.entry(action)
-                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(pal.content).clickable { picking = true }.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    DeckGlyph(DeckCatalog.symbolOf(action), pal.text, 22.dp)
-                    Column(Modifier.weight(1f).padding(start = 10.dp)) {
-                        Text(e?.let { tr(it.name(d.platform)) } ?: tr("Label only"), color = pal.text, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                        e?.let { Text(tr(it.desc(d.platform)), color = pal.muted, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis) }
-                    }
-                    Text(tr("Change"), color = pal.accent, fontSize = 13.sp)
-                }
+                ListItem(
+                    content = { Text(e?.let { tr(it.name(d.platform)) } ?: tr("Label only")) },
+                    supportingContent = e?.let { entry -> { Text(tr(entry.desc(d.platform)), maxLines = 2, overflow = TextOverflow.Ellipsis) } },
+                    leadingContent = { DeckGlyph(DeckCatalog.symbolOf(action), MaterialTheme.colorScheme.primary, 22.dp) },
+                    trailingContent = { TextButton(onClick = { picking = true }) { Text(tr("Change")) } },
+                    modifier = Modifier.clickable { picking = true },
+                    colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                )
                 ActionOptions(d, action, page) { kv -> put(*kv) }
                 if (e?.local == true || k == "macro") Text(tr("Set this one up on {name}’s Deck page.", "name" to (core.host?.name ?: "")), color = pal.muted, fontSize = 12.sp)
 
                 OutlinedTextField(label, { label = it.take(40) }, label = { Text(tr("Label")) }, placeholder = { Text(e?.let { tr(it.name(d.platform)) } ?: "") }, singleLine = true)
-                Text(tr("Symbol"), color = pal.muted, fontSize = 12.sp)
+                Text(tr("Symbol"), style = MaterialTheme.typography.titleSmall)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    val auto = icon.isEmpty()
-                    Box(Modifier.size(34.dp).clip(RoundedCornerShape(8.dp)).background(if (auto) pal.accent else pal.content).clickable { icon = "" }, contentAlignment = Alignment.Center) {
-                        Text(tr("Auto"), color = if (auto) Color.White else pal.text, fontSize = 9.sp)
-                    }
-                    for (s in DeckCatalog.SYMBOLS) Box(Modifier.size(34.dp).clip(RoundedCornerShape(8.dp)).background(if (icon == s) pal.accent else pal.content).clickable { icon = s }, contentAlignment = Alignment.Center) {
-                        DeckGlyph(s, if (icon == s) Color.White else pal.text, 18.dp)
-                    }
+                    FilterChip(
+                        selected = icon.isEmpty(),
+                        onClick = { icon = "" },
+                        label = { Text(tr("Auto")) },
+                    )
+                    for (symbol in DeckCatalog.SYMBOLS) FilterChip(
+                        selected = icon == symbol,
+                        onClick = { icon = symbol },
+                        label = { DeckGlyph(symbol, MaterialTheme.colorScheme.onSurface, 18.dp) },
+                    )
                 }
                 OutlinedTextField(if (DeckCatalog.symbol(icon) == null) icon else "", { icon = it.take(16) }, label = { Text(tr("Or an emoji")) }, singleLine = true)
-                Text(tr("Colour"), color = pal.muted, fontSize = 12.sp)
+                Text(tr("Colour"), style = MaterialTheme.typography.titleSmall)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    for (c in DECK_COLORS) Box(Modifier.size(28.dp).clip(CircleShape).background(deckColor(c)).border(if (c == color) 2.5.dp else 0.dp, pal.text, CircleShape).clickable { color = c })
+                    for (c in DECK_COLORS) FilterChip(
+                        selected = c == color,
+                        onClick = { color = c },
+                        label = { Text(c) },
+                        leadingIcon = {
+                            Box(
+                                Modifier.size(18.dp).clip(CircleShape).background(deckColor(c))
+                                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
+                            )
+                        },
+                    )
                 }
                 Text(tr("Size"), color = pal.muted, fontSize = 12.sp)
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -1498,16 +1523,21 @@ private fun TileEditor(core: Core, d: Deck, t: JSONObject, page: JSONObject, clo
 @Composable
 private fun Stepper(name: String, value: Int, range: IntRange, ok: (Int) -> Boolean, set: (Int) -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(name, color = pal.text, fontSize = 13.sp)
-        val less = value - 1; val more = value + 1
-        Box(Modifier.size(30.dp).clip(CircleShape).background(pal.content).clickable(enabled = less in range) { set(less) }, contentAlignment = Alignment.Center) {
-            Text("−", color = if (less in range) pal.text else pal.faint)
-        }
-        Text("$value", color = pal.text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+        Text(name, style = MaterialTheme.typography.bodyMedium)
+        val less = value - 1
+        val more = value + 1
+        FilledTonalIconButton(
+            onClick = { set(less) },
+            enabled = less in range,
+            modifier = Modifier.size(40.dp),
+        ) { Icon(Ico.minus, contentDescription = tr("Decrease")) }
+        Text("$value", style = MaterialTheme.typography.labelLarge)
         val can = more in range && ok(more)
-        Box(Modifier.size(30.dp).clip(CircleShape).background(pal.content).clickable(enabled = can) { set(more) }, contentAlignment = Alignment.Center) {
-            Text("+", color = if (can) pal.text else pal.faint)
-        }
+        FilledTonalIconButton(
+            onClick = { set(more) },
+            enabled = can,
+            modifier = Modifier.size(40.dp),
+        ) { Icon(Ico.plus, contentDescription = tr("Increase")) }
     }
 }
 
@@ -1522,8 +1552,12 @@ private fun ActionOptions(d: Deck, a: JSONObject, page: JSONObject, put: (Array<
     @Composable fun pick(opts: List<Pair<String, String>>, chosen: String, fn: (String) -> Unit) {
         if (opts.isEmpty()) { Text(tr("Nothing to choose from yet"), color = pal.muted, fontSize = 12.sp); return }
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            for ((id, name) in opts) Box(Modifier.clip(RoundedCornerShape(50)).background(if (id == chosen) pal.accent else pal.content).clickable { fn(id) }.padding(horizontal = 10.dp, vertical = 6.dp)) {
-                Text(name, color = if (id == chosen) Color.White else pal.text, fontSize = 12.sp, maxLines = 1)
+            for ((id, name) in opts) {
+                FilterChip(
+                    selected = id == chosen,
+                    onClick = { fn(id) },
+                    label = { Text(name, maxLines = 1) },
+                )
             }
         }
     }
@@ -1611,15 +1645,20 @@ private fun ActionPicker(d: Deck, close: () -> Unit, choose: (DeckCatalog.Entry)
                         Text(tr(gname), color = pal.muted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 10.dp, bottom = 4.dp))
                         for (e in list) {
                             val why = if (e.device) null else if (e.k !in d.can) "Not on this computer" else DeckCatalog.available(e, d.caps, d.platform)
-                            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable(enabled = why == null) { choose(e) }.alpha(if (why == null) 1f else 0.45f).padding(horizontal = 8.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically) {
-                                DeckGlyph(DeckCatalog.symbolOf(e.action()), pal.text, 20.dp)
-                                Column(Modifier.weight(1f).padding(start = 10.dp)) {
-                                    Text(tr(e.name(d.platform)), color = pal.text, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                                    Text(why?.let { tr(it) } ?: tr(e.desc(d.platform)), color = pal.muted, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                                    if (e.local) Text(tr("Stays on this computer"), color = pal.accent, fontSize = 11.sp)
-                                }
-                            }
+                            ListItem(
+                                content = { Text(tr(e.name(d.platform))) },
+                                supportingContent = {
+                                    Column {
+                                        Text(why?.let { tr(it) } ?: tr(e.desc(d.platform)), maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                        if (e.local) Text(tr("Stays on this computer"), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall)
+                                    }
+                                },
+                                leadingContent = { DeckGlyph(DeckCatalog.symbolOf(e.action()), MaterialTheme.colorScheme.onSurfaceVariant, 20.dp) },
+                                modifier = Modifier.fillMaxWidth().alpha(if (why == null) 1f else 0.45f)
+                                    .clickable(enabled = why == null) { choose(e) },
+                                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            )
+                            HorizontalDivider()
                         }
                     }
                 }

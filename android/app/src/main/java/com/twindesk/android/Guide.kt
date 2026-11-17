@@ -25,12 +25,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Badge
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -83,9 +85,9 @@ fun WirelessGuide(core: Core, ctx: Context, v: Int) {
             WirelessSteps(core, ctx, "")
             Spacer(Modifier.height(8.dp))
             Button(
-                onClick = { Guide.close(core) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = pal.accent, contentColor = Color.White),
-            ) { Text(tr("Done"), modifier = Modifier.padding(vertical = 4.dp)) }
+                onClick = { Guide.close(core) },
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text(tr("Done")) }
         }
     }
 }
@@ -146,7 +148,7 @@ private fun WirelessSteps(core: Core, ctx: Context, title: String, foot: @Compos
             Row(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     code, { code = it.filter { c -> c.isDigit() }.take(6) }, placeholder = { Text(tr("Or enter the code"), color = pal.faint, fontSize = 14.sp) }, singleLine = true,
-                    modifier = Modifier.weight(1f), shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.weight(1f),
                     textStyle = androidx.compose.ui.text.TextStyle(fontSize = 16.sp, color = pal.text, letterSpacing = 3.sp),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                 )
@@ -157,27 +159,51 @@ private fun WirelessSteps(core: Core, ctx: Context, title: String, foot: @Compos
     }
 }
 
-// One numbered step (like the Mac's setup rows); compact: a later step, title only.
+// A numbered setup step presented as a standard Material list item.
 @Composable
-private fun Step(n: Int, title: String, hint: String, done: Boolean, first: Boolean = false, optional: Boolean = false, compact: Boolean = false, action: @Composable () -> Unit) {
-    Column {
-        if (!first) Box(Modifier.padding(start = 50.dp).fillMaxWidth().height(1.dp).background(pal.line))
-        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = if (compact) 6.dp else 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                Modifier.size(if (compact) 22.dp else 26.dp).clip(CircleShape).background(if (done) pal.good else if (optional || compact) pal.trackOff else pal.accentSoft),
-                contentAlignment = Alignment.Center,
-            ) { Text(if (done) "✓" else "$n", color = if (done) Color.White else if (compact) pal.muted else pal.accent, fontWeight = FontWeight.Bold, fontSize = if (compact) 12.sp else 14.sp) }
-            Column(Modifier.weight(1f).padding(start = 12.dp, end = 10.dp)) {
-                Text(title, color = if (compact && !optional) pal.muted else pal.text, fontSize = if (compact) 13.5.sp else 15.sp)
-                if (hint.isNotEmpty()) Text(hint, color = pal.muted, fontSize = 12.5.sp)
+private fun Step(
+    n: Int,
+    title: String,
+    hint: String,
+    done: Boolean,
+    first: Boolean = false,
+    optional: Boolean = false,
+    compact: Boolean = false,
+    action: @Composable () -> Unit,
+) {
+    ListItem(
+        content = {
+            Text(
+                title,
+                style = if (compact) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodyLarge,
+                color = if (compact && !optional) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+            )
+        },
+        supportingContent = if (hint.isNotEmpty()) {
+            { Text(hint, style = MaterialTheme.typography.bodySmall) }
+        } else null,
+        leadingContent = {
+            Badge(
+                containerColor = when {
+                    done -> MaterialTheme.colorScheme.tertiary
+                    optional || compact -> MaterialTheme.colorScheme.surfaceContainerHigh
+                    else -> MaterialTheme.colorScheme.secondaryContainer
+                },
+                contentColor = when {
+                    done -> MaterialTheme.colorScheme.onTertiary
+                    optional || compact -> MaterialTheme.colorScheme.onSurfaceVariant
+                    else -> MaterialTheme.colorScheme.onSecondaryContainer
+                },
+            ) {
+                Text(if (done) "✓" else "$n", style = MaterialTheme.typography.labelMedium)
             }
-            if (!done) action()
-        }
-    }
+        },
+        trailingContent = if (!done) action else null,
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+    )
 }
+@Composable
+private fun Primary(label: String, onClick: () -> Unit) = Button(onClick = onClick) { Text(label) }
 
 @Composable
-private fun Primary(label: String, onClick: () -> Unit) = Button(onClick = onClick, colors = ButtonDefaults.buttonColors(containerColor = pal.accent, contentColor = Color.White), shape = RoundedCornerShape(8.dp)) { Text(label) }
-
-@Composable
-private fun Secondary(label: String, onClick: () -> Unit) = OutlinedButton(onClick = onClick, shape = RoundedCornerShape(8.dp)) { Text(label, color = pal.text) }
+private fun Secondary(label: String, onClick: () -> Unit) = FilledTonalButton(onClick = onClick) { Text(label) }

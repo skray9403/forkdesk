@@ -5,7 +5,6 @@
 // (shared/search-index.js → SearchIndex.kt); the matcher is the same as theirs.
 package com.twindesk.android
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,11 +18,17 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Icon
+import androidx.compose.ui.graphics.Color
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -34,12 +39,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -118,7 +119,7 @@ object Search {
     }
 }
 
-// The search page, over everything: the field (focused), then what's found; a tap opens its page.
+// The search page, over everything: a native Material input followed by standard list results.
 @Composable
 fun SearchScreen(pages: List<Pair<String, String>>, go: (String) -> Unit) {
     var q by rememberSaveable { mutableStateOf("") }
@@ -128,57 +129,73 @@ fun SearchScreen(pages: List<Pair<String, String>>, go: (String) -> Unit) {
     val close = { Search.open.value = false }
     androidx.activity.compose.BackHandler { close() }
     LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
-    Column(Modifier.fillMaxSize().background(pal.content).safeDrawingPadding()) {
-        Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Row(
-                Modifier.weight(1f).height(48.dp).clip(RoundedCornerShape(50)).background(pal.card).padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(Ico.search, null, tint = pal.muted, modifier = Modifier.size(20.dp))
-                Box(Modifier.padding(start = 10.dp).weight(1f)) {
-                    if (q.isEmpty()) Text(tr("Search settings and features"), color = pal.faint, fontSize = 16.sp, maxLines = 1)
-                    BasicTextField(
-                        q, { q = it }, singleLine = true,
-                        textStyle = TextStyle(color = pal.text, fontSize = 16.sp),
-                        cursorBrush = SolidColor(pal.accent),
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                        keyboardActions = KeyboardActions(onSearch = { found.firstOrNull()?.let { close(); go(it.page) } }),
-                        modifier = Modifier.fillMaxWidth().focusRequester(focus),
-                    )
-                }
-                if (q.isNotEmpty()) Text("✕", color = pal.muted, fontSize = 15.sp, modifier = Modifier.clip(RoundedCornerShape(50)).clickable { q = "" }.padding(6.dp))
+
+    Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 16.dp)) {
+        Row(
+            Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            OutlinedTextField(
+                value = q,
+                onValueChange = { q = it },
+                modifier = Modifier.weight(1f).focusRequester(focus),
+                singleLine = true,
+                placeholder = { Text(tr("Search settings and features"), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                leadingIcon = { Icon(Ico.search, contentDescription = null) },
+                trailingIcon = {
+                    if (q.isNotEmpty()) {
+                        IconButton(onClick = { q = "" }) {
+                            Icon(Ico.close, contentDescription = tr("Clear"))
+                        }
+                    }
+                },
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { found.firstOrNull()?.let { close(); go(it.page) } }),
+            )
+            TextButton(onClick = close, modifier = Modifier.padding(start = 4.dp)) {
+                Text(tr("Cancel"))
             }
-            Text(tr("Cancel"), color = pal.accent, fontSize = 16.sp, modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { close() }.padding(horizontal = 10.dp, vertical = 8.dp))
         }
+
         if (found.isEmpty()) {
             Text(
                 if (q.isBlank()) tr("Try “share pc audio to phone”, “dark mode” or “send a file”") else tr("Nothing found"),
-                color = pal.muted, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 16.dp),
             )
         }
-        LazyColumn(Modifier.fillMaxWidth().weight(1f).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(0.dp)) {
-            itemsIndexed(found) { i, it ->
-                Column {
-                    if (i > 0) Box(Modifier.padding(start = 4.dp).fillMaxWidth().height(1.dp).background(pal.line))
-                    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable { close(); go(it.page) }.padding(horizontal = 6.dp, vertical = 13.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(it.title, color = pal.text, fontSize = 16.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                        Text(if (it.isPage) tr("Page") else it.where, color = pal.muted, fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(start = 10.dp))
-                    }
-                }
+
+        LazyColumn(Modifier.fillMaxWidth().weight(1f)) {
+            itemsIndexed(found) { index, item ->
+                ListItem(
+                    content = {
+                        Text(item.title, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    },
+                    supportingContent = {
+                        Text(if (item.isPage) tr("Page") else item.where, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    },
+                    trailingContent = {
+                        Icon(Ico.right, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    },
+                    modifier = Modifier.clickable { close(); go(item.page) },
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                )
+                if (index < found.lastIndex) HorizontalDivider(Modifier.padding(start = 16.dp))
             }
         }
     }
 }
-
-// More's search field: a tap opens Search.
+// More's search field: a read-only Material text field opens the full search page.
 @Composable
 fun SearchField() {
-    Row(
-        Modifier.fillMaxWidth().padding(bottom = 14.dp).height(46.dp).clip(RoundedCornerShape(50)).background(pal.card)
-            .clickable { Search.open.value = true }.padding(horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(Ico.search, null, tint = pal.muted, modifier = Modifier.size(20.dp))
-        Text(tr("Search settings and features"), color = pal.faint, fontSize = 16.sp, maxLines = 1, modifier = Modifier.padding(start = 10.dp))
-    }
+    OutlinedTextField(
+        value = "",
+        onValueChange = {},
+        readOnly = true,
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth().padding(bottom = 14.dp).clickable { Search.open.value = true },
+        leadingIcon = { Icon(Ico.search, contentDescription = null) },
+        placeholder = { Text(tr("Search settings and features")) },
+    )
 }

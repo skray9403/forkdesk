@@ -37,8 +37,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -67,12 +72,15 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 @Composable
-private fun PButton(label: String, primary: Boolean = false, color: Color? = null, onClick: () -> Unit) = Button(
-    onClick = onClick, shape = RoundedCornerShape(50), elevation = null,
-    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 14.dp, vertical = 0.dp),
-    modifier = Modifier.padding(0.dp).let { it },
-    colors = ButtonDefaults.buttonColors(containerColor = if (primary) pal.accent else pal.chip, contentColor = if (primary) Color.White else color ?: pal.text),
-) { Text(label, fontSize = 14.sp, maxLines = 1, fontWeight = FontWeight.Medium) }
+private fun PButton(label: String, primary: Boolean = false, color: Color? = null, onClick: () -> Unit) {
+    when {
+        primary -> Button(onClick = onClick) { Text(label, maxLines = 1) }
+        color != null -> TextButton(onClick = onClick) {
+            Text(label, color = color, maxLines = 1)
+        }
+        else -> FilledTonalButton(onClick = onClick) { Text(label, maxLines = 1) }
+    }
+}
 
 // ---- the Android page ----
 
@@ -397,14 +405,29 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessagesBrowse(peer: 
     if (r == null) return Text("Loading…", color = pal.muted)
     Problem(peer, r, "messages") { threads = null; load++ }
     LazyColumn(Modifier.fillMaxWidth()) {
-        items(r.optJSONArray("items").objects()) { t ->
-            Column(Modifier.fillMaxWidth().clickable { open = t }.padding(vertical = 10.dp)) {
-                Row {
-                    Text(t.optString("name"), color = pal.text, fontSize = 16.sp, fontWeight = if (t.optBoolean("unread")) FontWeight.Bold else FontWeight.Normal, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(android.text.format.DateUtils.getRelativeTimeSpanString(t.optLong("at")).toString(), color = pal.faint, fontSize = 12.sp)
-                }
-                Text(t.optString("snippet"), color = pal.muted, fontSize = 13.5.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            }
+        items(r.optJSONArray("items").objects()) { thread ->
+            ListItem(
+                content = {
+                    Text(
+                        thread.optString("name"),
+                        fontWeight = if (thread.optBoolean("unread")) FontWeight.Bold else FontWeight.Normal,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                },
+                supportingContent = {
+                    Text(thread.optString("snippet"), maxLines = 2, overflow = TextOverflow.Ellipsis)
+                },
+                trailingContent = {
+                    Text(
+                        android.text.format.DateUtils.getRelativeTimeSpanString(thread.optLong("at")).toString(),
+                        style = MaterialTheme.typography.labelSmall,
+                    )
+                },
+                modifier = Modifier.fillMaxWidth().clickable { open = thread },
+                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+            )
+            HorizontalDivider(Modifier.padding(start = 16.dp))
         }
     }
 }
@@ -537,18 +560,36 @@ private fun androidx.compose.foundation.layout.ColumnScope.FilesBrowse(peer: Pee
     Problem(peer, res, "files") { load++ }
     val list = res.optJSONArray("items").objects().sortedWith(compareByDescending<JSONObject> { it.optBoolean("dir") }.thenBy { it.optString("name").lowercase() })
     LazyColumn(Modifier.fillMaxWidth().weight(1f)) {
-        items(list) { f ->
-            val dir = f.optBoolean("dir")
-            val p = if (path.isEmpty()) f.optString("name") else "$path/${f.optString("name")}"
-            Row(Modifier.fillMaxWidth().clickable(enabled = dir) { path = p }.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text((if (dir) "📁 " else "") + f.optString("name"), color = pal.text, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(if (dir) Files.plural(f.optInt("n"), "item") else FileClip.size(f.optLong("size")), color = pal.muted, fontSize = 12.sp)
-                }
-                PButton(tr("Save")) {
-                    peer.ask("fs.save", JSONObject().put("paths", JSONArray().put(p))) { x -> note = if (x.optBoolean("ok")) tr("Saving {file} in Downloads › TwinDesk…", "file" to f.optString("name")) else x.optString("error") }
-                }
-            }
+        items(list) { file ->
+            val dir = file.optBoolean("dir")
+            val itemPath = if (path.isEmpty()) file.optString("name") else "$path/${file.optString("name")}"
+            ListItem(
+                content = {
+                    Text(file.optString("name"), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                },
+                supportingContent = {
+                    Text(if (dir) Files.plural(file.optInt("n"), "item") else FileClip.size(file.optLong("size")))
+                },
+                leadingContent = {
+                    Icon(
+                        if (dir) Ico.folder else Ico.files,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                },
+                trailingContent = {
+                    PButton(tr("Save")) {
+                        peer.ask("fs.save", JSONObject().put("paths", JSONArray().put(itemPath))) { result ->
+                            note = if (result.optBoolean("ok")) {
+                                tr("Saving {file} in Downloads › TwinDesk…", "file" to file.optString("name"))
+                            } else result.optString("error")
+                        }
+                    }
+                },
+                modifier = Modifier.fillMaxWidth().clickable(enabled = dir) { path = itemPath },
+                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+            )
+            HorizontalDivider(Modifier.padding(start = 56.dp))
         }
     }
 }
