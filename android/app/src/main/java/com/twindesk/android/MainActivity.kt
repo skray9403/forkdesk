@@ -536,22 +536,29 @@ private fun TopIdentity(core: Core, v: Int) {
 
 @Composable
 private fun MoreList(core: Core, v: Int, BOTTOM: List<Tab>, modifier: Modifier, go: (Tab) -> Unit) {
-    @Suppress("UNUSED_EXPRESSION") v // redraw on every Core change (Compose skips unread parameters)
+    @Suppress("UNUSED_EXPRESSION") v
+    val entries = ordered(core).filter { it !in BOTTOM && shown(core, it) }
     Column(modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(20.dp)) {
         PageHead(tr("More"), "")
-        SearchField() // Search.kt
+        SearchField()
         MacCard {
-            ordered(core).filter { it !in BOTTOM && shown(core, it) }.forEachIndexed { i, t ->
-                Column {
-                    if (i > 0) Box(Modifier.padding(start = 58.dp).fillMaxWidth().height(1.dp).background(pal.line))
-                    Row(Modifier.fillMaxWidth().clickable { go(t) }.padding(horizontal = 16.dp, vertical = 11.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Tile(t.icon, t.colors, 30)
-                        Text(tr(t.title), color = pal.text, fontSize = 16.sp, modifier = Modifier.padding(start = 12.dp).weight(1f))
-                        if (wifiOnly(core, t)) Text(tr("Wi-Fi Direct"), color = pal.muted, fontSize = 12.sp)
-                        if (isOn(core, t)) Dot(pal.good, 7)
-                        Icon(Ico.right, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 8.dp))
-                    }
-                }
+            entries.forEachIndexed { index, tab ->
+                if (index > 0) HorizontalDivider(Modifier.padding(start = 56.dp))
+                ListItem(
+                    headlineContent = { Text(tr(tab.title)) },
+                    leadingContent = { Icon(tab.icon, contentDescription = null) },
+                    supportingContent = if (wifiOnly(core, tab)) {
+                        { Text(tr("Wi-Fi Direct"), style = MaterialTheme.typography.bodySmall) }
+                    } else null,
+                    trailingContent = {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            if (isOn(core, tab)) Badge(containerColor = MaterialTheme.colorScheme.tertiary)
+                            Icon(Ico.right, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    },
+                    modifier = Modifier.clickable { go(tab) },
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                )
             }
         }
     }
