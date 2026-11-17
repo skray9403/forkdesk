@@ -1447,7 +1447,7 @@ private fun TileEditor(core: Core, d: Deck, t: JSONObject, page: JSONObject, clo
                 // The action, and Change.
                 val e = DeckCatalog.entry(action)
                 ListItem(
-                    headlineContent = { Text(e?.let { tr(it.name(d.platform)) } ?: tr("Label only")) },
+                    content = { Text(e?.let { tr(it.name(d.platform)) } ?: tr("Label only")) },
                     supportingContent = e?.let { entry -> { Text(tr(entry.desc(d.platform)), maxLines = 2, overflow = TextOverflow.Ellipsis) } },
                     leadingContent = { DeckGlyph(DeckCatalog.symbolOf(action), MaterialTheme.colorScheme.primary, 22.dp) },
                     trailingContent = { TextButton(onClick = { picking = true }) { Text(tr("Change")) } },
@@ -1646,7 +1646,7 @@ private fun ActionPicker(d: Deck, close: () -> Unit, choose: (DeckCatalog.Entry)
                         for (e in list) {
                             val why = if (e.device) null else if (e.k !in d.can) "Not on this computer" else DeckCatalog.available(e, d.caps, d.platform)
                             ListItem(
-                                headlineContent = { Text(tr(e.name(d.platform))) },
+                                content = { Text(tr(e.name(d.platform))) },
                                 supportingContent = {
                                     Column {
                                         Text(why?.let { tr(it) } ?: tr(e.desc(d.platform)), maxLines = 2, overflow = TextOverflow.Ellipsis)
