@@ -1230,5 +1230,22 @@
   "Auto-rotate is on: the screen turns with this phone": "自动旋转已开启：画面随这部手机旋转",
   "Auto-rotate is off: the screen stays as it is": "自动旋转已关闭：画面保持当前方向",
   "Couldn’t take the screenshot": "无法截图",
-  "Screenshot saved in Pictures › TwinDesk": "截图已保存在“图片 › TwinDesk”"
+  "Screenshot saved in Pictures › TwinDesk": "截图已保存在“图片 › TwinDesk”",
+  "Above": "上方",
+  "Add page": "添加页面",
+  "Below": "下方",
+  "Blue": "蓝色",
+  "Copy again": "再次复制",
+  "Decrease": "减少",
+  "Green": "绿色",
+  "Grey": "灰色",
+  "Increase": "增加",
+  "Indigo": "靛蓝色",
+  "Orange": "橙色",
+  "Pink": "粉色",
+  "Position of {other} relative to {me}": "{other} 相对于 {me} 的位置",
+  "Purple": "紫色",
+  "Red": "红色",
+  "Teal": "青绿色",
+  "{other} is {where} {me}.": "{other} 位于 {me} 的{where}。"
 }
