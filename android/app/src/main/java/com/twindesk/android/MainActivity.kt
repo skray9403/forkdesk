@@ -45,6 +45,14 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.Badge
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.ColumnScope
@@ -347,7 +355,7 @@ fun App(core: Core, resumed: Int) {
             Row(Modifier.safeDrawingPadding()) {
                 Sidebar(core, v, tab) { tab = it }
                 // the page in a rounded sheet beside the sidebar, as the phone's under its branding
-                Box(Modifier.weight(1f).fillMaxHeight().padding(top = 10.dp, end = 10.dp, bottom = 10.dp).clip(RoundedCornerShape(28.dp)).background(pal.sheet)) {
+                Box(Modifier.weight(1f).fillMaxHeight().padding(start = 8.dp).background(pal.sheet)) {
                     Page(core, v, resumed, tab, Modifier.fillMaxSize())
                 }
             }
@@ -371,7 +379,7 @@ fun App(core: Core, resumed: Int) {
                 if (!more && tab == BOTTOM.first()) TopIdentity(core, v) // TwinDesk on the main page only
                 else Spacer(Modifier.height(10.dp))
                 // The page in a big rounded sheet under the branding; the bar floats at its bottom.
-                Column(Modifier.weight(1f).fillMaxWidth().clip(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp)).background(pal.sheet)) {
+                Column(Modifier.weight(1f).fillMaxWidth().background(pal.sheet)) {
                 if (more) MoreList(core, v, BOTTOM, Modifier.weight(1f)) { go(it, false) }
                 else Page(core, v, resumed, tab, Modifier.weight(1f))
                 // A Material navigation bar, as Google's own apps have it: line icons, the selected
@@ -380,10 +388,10 @@ fun App(core: Core, resumed: Int) {
                 // Search: its own round button at the bar's right end (Search.kt). Holding the bar: Arrange.
                 Row(Modifier.padding(start = 14.dp, end = 14.dp, bottom = 10.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 NavigationBar(
-                    containerColor = pal.card, tonalElevation = 0.dp, windowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
-                    modifier = Modifier.weight(1f)
-                        .shadow(14.dp, RoundedCornerShape(28.dp), ambientColor = Color.Black.copy(alpha = 0.12f), spotColor = Color.Black.copy(alpha = 0.12f))
-                        .clip(RoundedCornerShape(28.dp)).height(72.dp).onHold { NavOrder.open.value = true },
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    tonalElevation = 0.dp,
+                    windowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
+                    modifier = Modifier.weight(1f).onHold { NavOrder.open.value = true },
                 ) {
                     val item = @Composable { label: String, icon: ImageVector, selected: Boolean, dot: Boolean, go: () -> Unit ->
                         NavigationBarItem(
@@ -406,11 +414,9 @@ fun App(core: Core, resumed: Int) {
                 }
                 if (NavOrder.searchButton(core.store)) { // Arrange › Search button
                 Spacer(Modifier.width(10.dp))
-                Box(
-                    Modifier.size(60.dp).shadow(14.dp, RoundedCornerShape(50), ambientColor = Color.Black.copy(alpha = 0.12f), spotColor = Color.Black.copy(alpha = 0.12f))
-                        .clip(RoundedCornerShape(50)).background(pal.card).clickable { Search.open.value = true },
-                    contentAlignment = Alignment.Center,
-                ) { Icon(Ico.search, tr("Search"), tint = pal.text, modifier = Modifier.size(24.dp)) }
+                FilledTonalIconButton(onClick = { Search.open.value = true }) {
+                    Icon(Ico.search, contentDescription = tr("Search"))
+                }
                 }
                 }
                 }
@@ -469,7 +475,7 @@ private fun Sidebar(core: Core, v: Int, tab: Tab, go: (Tab) -> Unit) {
 // the paired ones nearby. Tap the connected one: Overview; another: connect it (the session moves).
 @Composable
 private fun Devices(core: Core, v: Int, open: () -> Unit) {
-    @Suppress("UNUSED_EXPRESSION") v // redraw on every Core change (Compose skips unread parameters)
+    @Suppress("UNUSED_EXPRESSION") v
     val link = core.link
     val peer = core.peer
     val host = core.host
@@ -491,24 +497,37 @@ private fun Devices(core: Core, v: Int, open: () -> Unit) {
         list += Dev(f.id, f.name, true, false, if (peer.waitingFor == f.id) tr("Requesting connection…") else tr("Nearby · Tap to connect")) { peer.connect(f) }
     }
     if (list.isEmpty()) return
-    Column(Modifier.padding(bottom = 14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        for (d in list) {
-            val shape = RoundedCornerShape(12.dp)
-            Row(
-                Modifier.fillMaxWidth().clip(shape)
-                    .background(if (d.connected) pal.accentSoft else pal.card)
-                    .border(1.dp, if (d.connected) pal.accent.copy(alpha = 0.7f) else pal.line, shape)
-                    .clickable(onClick = d.go).padding(horizontal = 10.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(Modifier.size(34.dp).clip(RoundedCornerShape(9.dp)).background(pal.content), contentAlignment = Alignment.Center) {
-                    Icon(if (d.isPhone) Ico.phone else Ico.display, null, tint = if (d.connected) pal.accent else pal.muted, modifier = Modifier.size(20.dp))
-                }
-                Column(Modifier.padding(start = 10.dp).weight(1f)) {
-                    Text(d.name, color = pal.text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(d.sub, color = pal.muted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-                if (d.connected) Dot(pal.good, 7)
+
+    Column(Modifier.padding(bottom = 14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            tr("Devices"),
+            style = MaterialTheme.typography.titleSmall,
+            modifier = Modifier.padding(start = 16.dp, bottom = 4.dp),
+        )
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        ) {
+            list.forEachIndexed { index, device ->
+                if (index > 0) HorizontalDivider(Modifier.padding(start = 56.dp))
+                ListItem(
+                    headlineContent = { Text(device.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    supportingContent = { Text(device.sub, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    leadingContent = {
+                        Icon(
+                            if (device.isPhone) Ico.phone else Ico.display,
+                            contentDescription = null,
+                            tint = if (device.connected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    },
+                    trailingContent = {
+                        if (device.connected) Badge(containerColor = MaterialTheme.colorScheme.tertiary)
+                        else Icon(Ico.right, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    },
+                    modifier = Modifier.clickable(onClick = device.go),
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                )
             }
         }
     }
@@ -535,7 +554,7 @@ private fun MoreList(core: Core, v: Int, BOTTOM: List<Tab>, modifier: Modifier, 
                         Text(tr(t.title), color = pal.text, fontSize = 16.sp, modifier = Modifier.padding(start = 12.dp).weight(1f))
                         if (wifiOnly(core, t)) Text(tr("Wi-Fi Direct"), color = pal.muted, fontSize = 12.sp)
                         if (isOn(core, t)) Dot(pal.good, 7)
-                        Text("›", color = pal.faint, fontSize = 20.sp, modifier = Modifier.padding(start = 8.dp))
+                        Icon(Ico.right, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 8.dp))
                     }
                 }
             }
@@ -576,29 +595,27 @@ private fun Page(core: Core, v: Int, resumed: Int, tab: Tab, modifier: Modifier)
     }
 }
 
-// The buttons in a row: one size everywhere, small enough that two fit beside a row's label
-// (larger ones went onto a line of their own under it).
-private val ROW_PAD = androidx.compose.foundation.layout.PaddingValues(horizontal = 14.dp, vertical = 0.dp)
+// Standard Material 3 action hierarchy: filled for primary, tonal for secondary actions.
+@Composable
+private fun Primary(label: String, onClick: () -> Unit) = Button(onClick = onClick) {
+    Text(label, maxLines = 1)
+}
 
 @Composable
-private fun Primary(label: String, onClick: () -> Unit) = Button(onClick = onClick, colors = ButtonDefaults.buttonColors(containerColor = pal.accent, contentColor = Color.White),
-    shape = if (Modern.on) RoundedCornerShape(50) else RoundedCornerShape(8.dp), contentPadding = ROW_PAD, modifier = Modifier.height(if (Modern.on) 40.dp else 36.dp)) { Text(label, fontSize = 14.sp, maxLines = 1, fontWeight = if (Modern.on) FontWeight.SemiBold else null) }
-
-// A row of equal buttons (Ring, Lock, Sleep): tonal pills on the phone, outlined on the tablet.
-@Composable
-private fun ChipButton(onClick: () -> Unit, modifier: Modifier, content: @Composable RowScope.() -> Unit) =
-    if (Modern.on) Button(onClick = onClick, modifier = modifier.height(44.dp), shape = RoundedCornerShape(50), elevation = null,
-        colors = ButtonDefaults.buttonColors(containerColor = pal.chip, contentColor = pal.text), content = content)
-    else OutlinedButton(onClick = onClick, modifier = modifier, shape = RoundedCornerShape(8.dp), content = content)
+private fun ChipButton(
+    onClick: () -> Unit,
+    modifier: Modifier,
+    content: @Composable RowScope.() -> Unit,
+) = FilledTonalButton(onClick = onClick, modifier = modifier, content = content)
 
 @Composable
 private fun Secondary(label: String, color: Color = pal.text, onClick: () -> Unit) =
-    // The phone: a tonal pill (the accent's soft tint, no outline); the tablet: outlined, as the Mac's.
-    if (Modern.on) Button(onClick = onClick, shape = RoundedCornerShape(50), contentPadding = ROW_PAD, modifier = Modifier.height(40.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = pal.chip, contentColor = if (color == pal.text) pal.text else color), elevation = null,
-    ) { Text(label, color = if (color == pal.text) pal.text else color, fontSize = 14.sp, maxLines = 1, fontWeight = FontWeight.Medium) }
-    else OutlinedButton(onClick = onClick, shape = RoundedCornerShape(8.dp),
-        contentPadding = ROW_PAD, modifier = Modifier.height(36.dp)) { Text(label, color = color, fontSize = 14.sp, maxLines = 1) }
+    FilledTonalButton(
+        onClick = onClick,
+        colors = ButtonDefaults.filledTonalButtonColors(contentColor = color),
+    ) {
+        Text(label, color = color, maxLines = 1)
+    }
 
 @Composable
 private fun NotConnected(core: Core, v: Int) {
@@ -1582,16 +1599,19 @@ private fun FilesPage(core: Core, v: Int) {
                 }
             }
         }
-        Box(
-            Modifier.padding(horizontal = 16.dp, vertical = 12.dp).fillMaxWidth().height(if (Modern.on) 52.dp else 100.dp)
-                .clip(RoundedCornerShape(if (Modern.on) 16.dp else 10.dp))
-                .let { if (Modern.on) it.background(if (over) pal.accentSoft else pal.chip) else it.border(2.dp, if (over) pal.accent else pal.faint.copy(alpha = 0.5f), RoundedCornerShape(10.dp)).background(if (over) pal.accentSoft else Color.Transparent) }
+        Card(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp).fillMaxWidth().height(56.dp)
                 .dragAndDropTarget(shouldStartDragAndDrop = { ev -> ev.mimeTypes().isNotEmpty() }, target = target),
-            contentAlignment = Alignment.Center,
+            colors = CardDefaults.cardColors(
+                containerColor = if (over) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainer,
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         ) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(Ico.files, null, tint = if (over) pal.accent else pal.muted, modifier = Modifier.size(18.dp))
                 Text(if (over) tr("Drop to send to {name}", "name" to name) else tr("Or drag files here"), color = if (over) pal.accent else pal.muted, fontSize = 13.5.sp, maxLines = 1)
+            }
             }
         }
     }
@@ -1911,17 +1931,16 @@ private fun GeneralPage(core: Core, v: Int) {
 }
 
 
-// The phone's hero card: one surface with a faint tint of the accent (no inner shade, no
-// gradient), so nothing in it asks for attention; its buttons are white pills on it.
+// A standard tonal Material card for the connection overview.
 @Composable
 private fun HeroCard(content: @Composable ColumnScope.() -> Unit) {
-    val p = pal
-    val dark = p.text.luminance() > 0.5f
-    val bg = androidx.compose.ui.graphics.lerp(p.card, p.accent, if (dark) 0.07f else 0.05f)
-    val soft = p.copy(chip = if (dark) Color.White.copy(alpha = 0.08f) else Color.White)
-    Column(Modifier.padding(bottom = 18.dp).fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(bg)) {
-        androidx.compose.runtime.CompositionLocalProvider(LocalPalette provides soft) { content() }
-    }
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(bottom = 18.dp),
+        shape = MaterialTheme.shapes.extraLarge,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        content = { Column(content = content) },
+    )
 }
 
 @Composable
@@ -1950,7 +1969,7 @@ private fun ColumnScope.HeroBody(core: Core, v: Int, me: String, host: Host?, li
             if (ph != null) Device(ph.peerName, phone = true, Modifier.weight(1f))
             else Device(them(core), phone = false, Modifier.weight(1f))
         }
-        if (!(Modern.on && (host != null || ph != null))) Text(
+        if (host == null && ph == null) Text(
             when {
                 host != null -> tr("Connected")
                 ph != null -> tr("Connected") + (if (ph.role == "host") tr(" · It connected to this phone") else "")
@@ -1970,7 +1989,7 @@ private fun ColumnScope.HeroBody(core: Core, v: Int, me: String, host: Host?, li
         // Over Bluetooth: greyed out, it only works over Wi-Fi.
         val adbBle = core.link.ble
         if (host != null && !core.adb.paired && (adbBle || core.adb.setupNeeded || !core.adb.wifiDebugging)) Row(
-            Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 14.dp).clip(RoundedCornerShape(8.dp)).background(if (Modern.on) pal.chip else if (adbBle) pal.line.copy(alpha = 0.35f) else pal.warn.copy(alpha = 0.12f)).padding(horizontal = 12.dp, vertical = 8.dp),
+            Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 14.dp).background(MaterialTheme.colorScheme.surfaceContainerHigh).padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
@@ -1983,11 +2002,10 @@ private fun ColumnScope.HeroBody(core: Core, v: Int, me: String, host: Host?, li
             if (!adbBle) { if (core.adb.setupNeeded) Secondary(tr("Set up")) { Guide.open.value = true } else Secondary(tr("Turn on")) { core.adb.turnOn() } }
         }
         if (ph != null) Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (ph.can("screen")) Button(onClick = { PeerScreen.view(ph, core.ctx) }, modifier = Modifier.fillMaxWidth().height(48.dp), shape = RoundedCornerShape(50),
-                colors = ButtonDefaults.buttonColors(containerColor = if (Modern.on) pal.accentSoft else pal.accent, contentColor = if (Modern.on) pal.accent else Color.White), elevation = if (Modern.on) null else ButtonDefaults.buttonElevation()) {
+            if (ph.can("screen")) FilledTonalButton(onClick = { PeerScreen.view(ph, core.ctx) }, modifier = Modifier.fillMaxWidth()) {
                 Text(tr("Show {name}’s screen", "name" to ph.peerName), fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            Button(onClick = { ph.disconnect() }, modifier = Modifier.fillMaxWidth().height(48.dp), shape = RoundedCornerShape(50), elevation = null, colors = ButtonDefaults.buttonColors(containerColor = pal.chip, contentColor = pal.text)) { Text(tr("Disconnect")) }
+            FilledTonalButton(onClick = { ph.disconnect() }, modifier = Modifier.fillMaxWidth()) { Text(tr("Disconnect")) }
         }
         if (host != null) {
             val show = { core.ctx.startActivity(Intent(core.ctx, ViewerActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
@@ -2004,12 +2022,11 @@ private fun ColumnScope.HeroBody(core: Core, v: Int, me: String, host: Host?, li
             } else {
                 // A phone: one button per line, inside the card's padding.
                 Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = show, modifier = Modifier.fillMaxWidth().height(48.dp), shape = RoundedCornerShape(50),
-                        colors = ButtonDefaults.buttonColors(containerColor = if (Modern.on) pal.accentSoft else pal.accent, contentColor = if (Modern.on) pal.accent else Color.White), elevation = if (Modern.on) null else ButtonDefaults.buttonElevation()) {
+                    FilledTonalButton(onClick = show, modifier = Modifier.fillMaxWidth()) {
                         Text(tr("Show {name}’s screen", "name" to host.name), fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
-                    if (wifiLabel != null) Button(onClick = { wifiClick() }, modifier = Modifier.fillMaxWidth().height(48.dp), shape = RoundedCornerShape(50), elevation = null, colors = ButtonDefaults.buttonColors(containerColor = pal.chip, contentColor = pal.text)) { Text(wifiLabel) }
-                    Button(onClick = { core.disconnect() }, modifier = Modifier.fillMaxWidth().height(48.dp), shape = RoundedCornerShape(50), elevation = null, colors = ButtonDefaults.buttonColors(containerColor = pal.chip, contentColor = pal.text)) { Text(tr("Disconnect")) }
+                    if (wifiLabel != null) FilledTonalButton(onClick = { wifiClick() }, modifier = Modifier.fillMaxWidth()) { Text(wifiLabel) }
+                    FilledTonalButton(onClick = { core.disconnect() }, modifier = Modifier.fillMaxWidth()) { Text(tr("Disconnect")) }
                 }
             }
         }
