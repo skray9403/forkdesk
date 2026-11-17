@@ -39,6 +39,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -67,12 +68,15 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 @Composable
-private fun PButton(label: String, primary: Boolean = false, color: Color? = null, onClick: () -> Unit) = Button(
-    onClick = onClick, shape = RoundedCornerShape(50), elevation = null,
-    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 14.dp, vertical = 0.dp),
-    modifier = Modifier.padding(0.dp).let { it },
-    colors = ButtonDefaults.buttonColors(containerColor = if (primary) pal.accent else pal.chip, contentColor = if (primary) Color.White else color ?: pal.text),
-) { Text(label, fontSize = 14.sp, maxLines = 1, fontWeight = FontWeight.Medium) }
+private fun PButton(label: String, primary: Boolean = false, color: Color? = null, onClick: () -> Unit) {
+    when {
+        primary -> Button(onClick = onClick) { Text(label, maxLines = 1) }
+        color != null -> TextButton(onClick = onClick) {
+            Text(label, color = color, maxLines = 1)
+        }
+        else -> FilledTonalButton(onClick = onClick) { Text(label, maxLines = 1) }
+    }
+}
 
 // ---- the Android page ----
 
