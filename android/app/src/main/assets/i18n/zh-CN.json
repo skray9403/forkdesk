@@ -1240,6 +1240,5 @@
   "Teal": "青绿色",
   "{other} is {where} {me}.": "{other} 位于 {me} 的{where}。",
   "Bluetooth fallback": "蓝牙备用连接",
-  "After Wi-Fi or USB disconnects, searches nearby for 5 minutes. A Bluetooth session stays connected until Wi-Fi or USB returns.": "Wi-Fi 或 USB 断开后，会搜索附近设备 5 分钟。建立蓝牙会话后，将保持连接，直到 Wi-Fi 或 USB 恢复。",
-  "Turn off Bluetooth on Wi-Fi connections": "连接 Wi-Fi 时关闭蓝牙"
+  "After Wi-Fi or USB disconnects, searches nearby for 5 minutes. A Bluetooth session stays connected until Wi-Fi or USB returns.": "Wi-Fi 或 USB 断开后，会搜索附近设备 5 分钟。建立蓝牙会话后，将保持连接，直到 Wi-Fi 或 USB 恢复。"
 }
