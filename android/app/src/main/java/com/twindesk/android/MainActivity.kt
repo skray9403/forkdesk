@@ -825,7 +825,7 @@ private fun BleSwitch(core: Core, askHint: String, first: Boolean = false, revis
         !allowed -> askHint
         core.bleWifiOff && link.connected && core.net.via == "Wi-Fi" -> tr("Paused while on the same Wi-Fi as {name}; resumes if Wi-Fi drops", "name" to name)
         else -> tr("Connects to {name} when it isn’t on this network. Files and screens use a temporary Wi-Fi Direct link", "name" to name)
-    }, core.bleOn, first = first) { core.store.setFlag("ble", it); core.changed() }
+    }, core.bleOn, first = first) { core.setBleEnabled(it) }
 }
 
 @Composable
@@ -1910,8 +1910,10 @@ private fun GeneralPage(core: Core, v: Int) {
     MacCard(tr("Network and Bluetooth")) {
         @Suppress("UNUSED_EXPRESSION") v // capture the revision in this remembered content
         BleSwitch(core, tr("Requires the Nearby devices permission"), first = true, revision = v)
-        SwitchRow(tr("Turn off Bluetooth on Wi-Fi connections"), if (core.bleWifiOff) tr("While connected to {name} over the same Wi-Fi network", "name" to name)
-            else tr("Bluetooth stays on as a fallback if Wi-Fi drops"), core.bleWifiOff) { core.store.setFlag("bleWifiOff", it); core.changed() }
+        MacRow(
+            tr("Bluetooth fallback"),
+            tr("After Wi-Fi or USB disconnects, searches nearby for 5 minutes. A Bluetooth session stays connected until Wi-Fi or USB returns."),
+        )
         val n = core.net
         if (n.state != "idle") MacRow(tr("Wi-Fi Direct"), when (n.state) {
             "asking", "hosting" -> tr("Starting a direct Wi-Fi link…")
