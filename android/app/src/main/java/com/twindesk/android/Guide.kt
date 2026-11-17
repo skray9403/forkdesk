@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -147,7 +148,7 @@ private fun WirelessSteps(core: Core, ctx: Context, title: String, foot: @Compos
             Row(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     code, { code = it.filter { c -> c.isDigit() }.take(6) }, placeholder = { Text(tr("Or enter the code"), color = pal.faint, fontSize = 14.sp) }, singleLine = true,
-                    modifier = Modifier.weight(1f), shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.weight(1f),
                     textStyle = androidx.compose.ui.text.TextStyle(fontSize = 16.sp, color = pal.text, letterSpacing = 3.sp),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                 )
