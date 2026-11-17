@@ -237,30 +237,71 @@ class Core private constructor(val ctx: Context) : Link.Events {
     // or a USB cable, it stays as the fallback.
     private val resumeTried = HashMap<String, Long>()
     private fun bleTick() {
-        // Keep BLE ready while USB is carrying the session: either side can take over immediately
-        // when the cable is removed, without waiting for discovery or GATT startup.
         ble.prune()
-        if (bleWifiOff && link.connected && net.via == "Wi-Fi") {
-            link.dropAlt()
-            ble.trim()
-            serve.trim()
-        }
-        val want = bleOn && ble.allowed() && ble.radioOn && (!link.connected || link.ble || link.wired)
-        ble.scan(want)
-        if (!bleOn && ble.found.isNotEmpty()) ble.stop()
-        serve.advertise(bleOn && serve.allowed() && ble.radioOn && (!link.connected || link.wired) && !peer.connected) // keep the phone-side GATT path ready over USB
-        if (!bleOn && serve.found.isNotEmpty()) serve.stop()
-        val h = link.host
-        if (link.connected && !link.ble) screen.onWifi()
-        if (h == null || !link.connected || !link.ble || link.resuming) return
-        val f = discovery.found[h.id] ?: return
         val now = System.currentTimeMillis()
-        if (now - (resumeTried[f.address] ?: 0) < 8000) return
-        resumeTried[f.address] = now
-        Log.i("TwinDesk", "${h.name} is on the network at ${f.address}: moving the session there")
-        link.resume(f.address, f.port)
-    }
 
+        // A newly established Wi-Fi or USB session wins: drop any BLE fallback socket,
+        // stop scanning/advertising, and release both BLE GATT sides.
+        if (link.connected && !link.ble) {
+            establishedTransport = if (link.wired) "usb" else "wifi"
+            bleFallbackUntil = 0L
+            bleFallbackHostId = ""
+            bleFallbackExpiredHostId = ""
+            resumeUntil = 0L
+            resumeHost = null
+            link.dropAlt(force = true)
+            ble.stop()
+            serve.stop()
+            if (!link.wired) screen.onWifi()
+            return
+        }
+
+        // A successful Bluetooth session owns its GATT path indefinitely. Discovery on Wi-Fi
+        // remains active, so a newly available LAN route can take over; once promoted, the
+        // branch above shuts Bluetooth down.
+        if (link.connected && link.ble) {
+            establishedTransport = "bluetooth"
+            bleFallbackUntil = 0L
+            bleFallbackHostId = ""
+            bleFallbackExpiredHostId = ""
+            ble.scan(false)
+            serve.advertise(false)
+            val h = link.host ?: return
+            if (link.resuming) return
+            val f = discovery.found[h.id] ?: return
+            if (now - (resumeTried[f.address] ?: 0L) < 8000L) return
+            resumeTried[f.address] = now
+            Log.i("TwinDesk", "${h.name} is on the network at ${f.address}: moving the session there")
+            link.resume(f.address, f.port)
+            return
+        }
+
+        // Do not interrupt an in-progress BLE pairing before its five-minute search window ends.
+        if (link.pair?.ble == true && bleFallbackUntil > now) {
+            ble.scan(false)
+            serve.advertise(false)
+            return
+        }
+
+        if (bleOn && bleFallbackUntil > now) {
+            if (ble.allowed() && ble.radioOn) ble.scan(true) else ble.scan(false)
+            if (serve.allowed() && serve.radioOn) serve.advertise(true) else serve.advertise(false)
+            return
+        }
+
+        // Expiry is final for this recovery attempt. A failed in-flight reconnect must not
+        // reopen another five-minute window.
+        if (bleFallbackUntil != 0L) {
+            bleFallbackExpiredHostId = bleFallbackHostId
+            bleFallbackUntil = 0L
+            bleFallbackHostId = ""
+            resumeUntil = 0L
+            resumeHost = null
+            Log.i("TwinDesk", "Bluetooth recovery window expired; stopping BLE")
+        }
+        ble.stop()
+        serve.stop()
+    }
     // Computers near: on the network, then the ones only Bluetooth sees.
     fun nearby(): List<Found> {
         val net = discovery.list()
