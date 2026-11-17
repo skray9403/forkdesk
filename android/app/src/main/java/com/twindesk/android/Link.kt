@@ -399,11 +399,11 @@ class Link(
     // On the same Wi-Fi as the computer (Core.bleTick): the Bluetooth fallback goes once this path
     // has proven itself (on it FALLBACK_MS, answering). The Wi-Fi dropping then ends the session,
     // which comes back over Bluetooth (Core.resume).
-    fun dropAlt() = run {
+    fun dropAlt(force: Boolean = false) = run {
         val a = alt ?: return@run
         val w = ws ?: return@run
         val now = System.currentTimeMillis()
-        if (ble || !altBle || now - movedAt < FALLBACK_MS || now - (lastRxOf[w] ?: 0L) > ANSWERING_MS) return@run
+        if (!force && (ble || !altBle || now - movedAt < FALLBACK_MS || now - (lastRxOf[w] ?: 0L) > ANSWERING_MS)) return@run
         alt = null
         lastRxOf.remove(a)
         a.close(1000, null)
