@@ -101,7 +101,6 @@
   "Bluetooth gamepad · {name}": "Bluetooth-геймпад · {name}",
   "Bluetooth is off on this device": "Bluetooth на этом устройстве выключен",
   "Bluetooth is off on this phone": "Bluetooth на этом телефоне выключен",
-  "Bluetooth stays on as a fallback if Wi-Fi drops": "Bluetooth остаётся включённым на случай пропадания Wi-Fi",
   "Bluetooth stopped: turn it on again": "Bluetooth остановлен: включите его снова",
   "Bluetooth with computers": "Bluetooth с компьютерами",
   "Both ways": "В обе стороны",
@@ -945,7 +944,6 @@
   "Try a new code.": "Попробуйте новый код.",
   "Try again": "Повторить",
   "Try “share pc audio to phone”, “dark mode” or “send a file”": "Попробуйте «звук компьютера на телефон», «тёмная тема» или «отправить файл»",
-  "Turn off Bluetooth on Wi-Fi connections": "Выключать Bluetooth при подключении по Wi-Fi",
   "Turn off Developer options": "Выключить параметры разработчика",
   "Turn off USB and wireless debugging in Developer options if {app} still refuses to open.": "Если {app} всё ещё не открывается, выключите отладку по USB и по Wi-Fi в параметрах разработчика.",
   "Turn off wireless debugging when disconnected": "Выключать отладку по Wi-Fi при отключении",
@@ -1036,7 +1034,6 @@
   "Where {name} is": "Где находится {name}",
   "Which are in the bottom bar, and in what order. Or hold the bar": "Какие страницы на нижней панели и в каком порядке. Или удерживайте панель",
   "While TwinDesk is open, or at any time with wireless debugging": "Пока TwinDesk открыт или в любое время с отладкой по Wi-Fi",
-  "While connected to {name} over the same Wi-Fi network": "Когда подключено к {name} по той же сети Wi-Fi",
   "Wi-Fi": "Wi-Fi",
   "Wi-Fi Direct": "Wi-Fi Direct",
   "Wi-Fi Direct couldn’t start": "Не удалось запустить Wi-Fi Direct",
@@ -1241,5 +1238,7 @@
   "Purple": "Фиолетовый",
   "Red": "Красный",
   "Teal": "Бирюзовый",
-  "{other} is {where} {me}.": "{other} находится {where} относительно {me}."
+  "{other} is {where} {me}.": "{other} находится {where} относительно {me}.",
+  "Bluetooth fallback": "Резервное подключение Bluetooth",
+  "After Wi-Fi or USB disconnects, searches nearby for 5 minutes. A Bluetooth session stays connected until Wi-Fi or USB returns.": "После отключения Wi‑Fi или USB поиск устройств поблизости продолжается 5 минут. Установленное Bluetooth-соединение сохраняется, пока Wi‑Fi или USB не подключится снова."
 }
