@@ -101,7 +101,6 @@
   "Bluetooth gamepad · {name}": "Controle Bluetooth · {name}",
   "Bluetooth is off on this device": "O Bluetooth está desativado neste dispositivo",
   "Bluetooth is off on this phone": "O Bluetooth está desativado neste celular",
-  "Bluetooth stays on as a fallback if Wi-Fi drops": "O Bluetooth fica ativado como reserva se o Wi-Fi cair",
   "Bluetooth stopped: turn it on again": "O Bluetooth parou: ative-o novamente",
   "Bluetooth with computers": "Bluetooth com computadores",
   "Both ways": "Nos dois sentidos",
@@ -945,7 +944,6 @@
   "Try a new code.": "Tente um novo código.",
   "Try again": "Tentar novamente",
   "Try “share pc audio to phone”, “dark mode” or “send a file”": "Experimente “áudio do pc no celular”, “modo escuro” ou “enviar arquivo”",
-  "Turn off Bluetooth on Wi-Fi connections": "Desativar o Bluetooth em conexões Wi-Fi",
   "Turn off Developer options": "Desativar as Opções do desenvolvedor",
   "Turn off USB and wireless debugging in Developer options if {app} still refuses to open.": "Desative a depuração USB e por Wi-Fi nas Opções do desenvolvedor se {app} ainda se recusar a abrir.",
   "Turn off wireless debugging when disconnected": "Desativar a depuração por Wi-Fi ao desconectar",
@@ -1036,7 +1034,6 @@
   "Where {name} is": "Onde {name} está",
   "Which are in the bottom bar, and in what order. Or hold the bar": "Quais ficam na barra inferior e em que ordem. Ou segure a barra",
   "While TwinDesk is open, or at any time with wireless debugging": "Enquanto o TwinDesk está aberto, ou a qualquer momento com a depuração por Wi-Fi",
-  "While connected to {name} over the same Wi-Fi network": "Enquanto conectado a {name} pela mesma rede Wi-Fi",
   "Wi-Fi": "Wi-Fi",
   "Wi-Fi Direct": "Wi-Fi Direct",
   "Wi-Fi Direct couldn’t start": "Não foi possível iniciar o Wi-Fi Direct",
@@ -1241,5 +1238,7 @@
   "Purple": "Roxo",
   "Red": "Vermelho",
   "Teal": "Verde-azulado",
-  "{other} is {where} {me}.": "{other} está {where} de {me}."
+  "{other} is {where} {me}.": "{other} está {where} de {me}.",
+  "Bluetooth fallback": "Conexão Bluetooth de reserva",
+  "After Wi-Fi or USB disconnects, searches nearby for 5 minutes. A Bluetooth session stays connected until Wi-Fi or USB returns.": "Após a desconexão do Wi-Fi ou USB, procura dispositivos próximos por 5 minutos. Uma sessão Bluetooth conectada permanece ativa até que o Wi-Fi ou USB volte."
 }
