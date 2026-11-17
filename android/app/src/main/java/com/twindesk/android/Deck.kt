@@ -18,10 +18,19 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.Surface
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -113,6 +122,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.luminance
@@ -340,9 +350,8 @@ fun DeckPage(core: Core, v: Int) {
         return
     }
     androidx.compose.material3.Button(
-        onClick = { DeckActivity.open(ctx) }, shape = RoundedCornerShape(14.dp),
-        colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = pal.accent, contentColor = Color.White),
-        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp).height(52.dp),
+        onClick = { DeckActivity.open(ctx) },
+        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
     ) {
         Icon(Ico.deck, null, modifier = Modifier.size(18.dp))
         Text(tr("Open Deck"), fontSize = 16.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 8.dp))
@@ -385,9 +394,11 @@ private fun DeckEditor(core: Core, d: Deck) {
             if (spaces.size > 1) Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 for (s in spaces) {
                     val on = s === space
-                    Box(Modifier.clip(RoundedCornerShape(50)).background(if (on) pal.accent else pal.card).clickable { spaceId = s.optString("id") }.padding(horizontal = 12.dp, vertical = 6.dp)) {
-                        Text(s.str("name", 30), color = if (on) Color.White else pal.text, fontSize = 13.sp, maxLines = 1)
-                    }
+                    FilterChip(
+                        selected = on,
+                        onClick = { spaceId = s.optString("id") },
+                        label = { Text(s.str("name", 30), maxLines = 1) },
+                    )
                 }
             }
             TileSpace(core, d, space, pageOf, editing = true, full = false) { }
@@ -742,16 +753,16 @@ private fun ColumnScope.TileSpace(core: Core, d: Deck, space: JSONObject, pageOf
     // The pages by name; editing: + adds one.
     if (!full) Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         pages.forEachIndexed { i, p ->
-            val on = i == pager.currentPage
-            Box(Modifier.clip(RoundedCornerShape(50)).background(if (on) pal.text.copy(alpha = 0.14f) else Color.Transparent).border(1.dp, pal.line, RoundedCornerShape(50))
-                .clickable { toPage(i) }.padding(horizontal = 12.dp, vertical = 5.dp)) {
-                Text(p.str("name", 30), color = pal.text, fontSize = 12.5.sp, maxLines = 1, fontWeight = if (on) FontWeight.SemiBold else null)
-            }
+            FilterChip(
+                selected = i == pager.currentPage,
+                onClick = { toPage(i) },
+                label = { Text(p.str("name", 30), maxLines = 1) },
+            )
         }
-        if (editing) Box(Modifier.clip(RoundedCornerShape(50)).border(1.dp, pal.line, RoundedCornerShape(50)).clickable {
+        if (editing) FilledTonalIconButton(onClick = {
             d.edit { l -> spaceIn(l, sid)?.optJSONArray("pages")?.put(JSONObject().put("id", newId("p")).put("name", tr("Page {n}", "n" to (pages.size + 1))).put("cols", 4).put("rows", 4).put("tiles", JSONArray())) }
             scope.launch { delay(50); pager.animateScrollToPage(pages.size) }
-        }.padding(horizontal = 12.dp, vertical = 5.dp)) { Text("+", color = pal.text, fontSize = 12.5.sp) }
+        }) { Icon(Ico.plus, contentDescription = tr("Add page")) }
     }
 
     // The grid fills the screen: each page's cells as wide and tall as its columns and rows allow.
@@ -845,12 +856,10 @@ private fun TileView(d: Deck, t: JSONObject, cw: Dp, ch: Dp, gap: Dp, editing: B
     val slider = a.optString("k") == "slider" && !editing && runs
     var drag by remember(id) { mutableStateOf<Float?>(null) }
     val value = drag ?: level(a, d.state)
-    Box(
-        Modifier.offset(x = (cw + gap) * t.optInt("x"), y = (ch + gap) * t.optInt("y"))
+    Surface(
+        modifier = Modifier.offset(x = (cw + gap) * t.optInt("x"), y = (ch + gap) * t.optInt("y"))
             .size(cw * w + gap * (w - 1), ch * h + gap * (h - 1))
             .alpha(if (runs) 1f else 0.4f)
-            .clip(RoundedCornerShape(16.dp)).background(bg)
-            .border(if (failed) 2.dp else 0.dp, if (failed) pal.bad else Color.Transparent, RoundedCornerShape(16.dp))
             .then(if (slider) Modifier.pointerInput(id) {
                 val at = { x: Float -> (x / size.width.coerceAtLeast(1)).coerceIn(0f, 1f) }
                 detectHorizontalDragGestures(
@@ -859,10 +868,15 @@ private fun TileView(d: Deck, t: JSONObject, cw: Dp, ch: Dp, gap: Dp, editing: B
                 ) { ch, _ -> ch.consume(); val v = at(ch.position.x); drag = v; d.set(id, v) }
             }.pointerInput(id + "tap") {
                 detectTapGestures { o -> d.set(id, (o.x / size.width).coerceIn(0f, 1f)); drag = null }
-            } else Modifier.clickable(onClick = onTap))
-            .padding(if (w == 1 && h == 1) 6.dp else 12.dp),
+            } else Modifier.clickable(onClick = onTap),
+        shape = MaterialTheme.shapes.large,
+        color = bg,
+        contentColor = fg,
+        border = if (failed) BorderStroke(2.dp, pal.bad) else null,
+        tonalElevation = 0.dp,
     ) {
-        if (a.optString("k") == "widget") { WidgetFace(d, a, fg, w, h); return@Box }
+        Box(Modifier.fillMaxSize().padding(if (w == 1 && h == 1) 6.dp else 12.dp)) {
+        if (a.optString("k") == "widget") { WidgetFace(d, a, fg, w, h); return@Surface }
         val sub = if (slider) value?.let { "${(it * 100).roundToInt()}%" } ?: "" else stateText(a, d.state)
         val iconSize = if (w == 1 && h == 1) 24.dp else 28.dp
         if (w == 1) Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
@@ -880,6 +894,7 @@ private fun TileView(d: Deck, t: JSONObject, cw: Dp, ch: Dp, gap: Dp, editing: B
             if (a.optString("k") == "slider") Box(Modifier.padding(top = 8.dp).fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)).background(fg.copy(alpha = 0.22f))) {
                 Box(Modifier.fillMaxWidth(value ?: 0f).fillMaxHeight().background(fg.copy(alpha = 0.95f)))
             }
+        }
         }
     }
 }
@@ -1302,9 +1317,8 @@ private fun shelfView(d: Deck, sets: List<JSONObject>, shelf: Boolean, setShelf:
 }
 
 @Composable
-private fun Chip(text: String, accent: Boolean = false, onClick: () -> Unit) = Box(
-    Modifier.clip(RoundedCornerShape(50)).background(if (accent) pal.accent else pal.card).clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 8.dp),
-) { Text(text, color = if (accent) Color.White else pal.text, fontSize = 12.sp, fontWeight = FontWeight.Medium, maxLines = 1) }
+private fun Chip(text: String, accent: Boolean = false, onClick: () -> Unit) =
+    FilterChip(selected = accent, onClick = onClick, label = { Text(text, maxLines = 1) })
 
 // A small picture of zones on a display, each with its app's icon (a zone with no app left free).
 @Composable
@@ -1498,16 +1512,21 @@ private fun TileEditor(core: Core, d: Deck, t: JSONObject, page: JSONObject, clo
 @Composable
 private fun Stepper(name: String, value: Int, range: IntRange, ok: (Int) -> Boolean, set: (Int) -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(name, color = pal.text, fontSize = 13.sp)
-        val less = value - 1; val more = value + 1
-        Box(Modifier.size(30.dp).clip(CircleShape).background(pal.content).clickable(enabled = less in range) { set(less) }, contentAlignment = Alignment.Center) {
-            Text("−", color = if (less in range) pal.text else pal.faint)
-        }
-        Text("$value", color = pal.text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+        Text(name, style = MaterialTheme.typography.bodyMedium)
+        val less = value - 1
+        val more = value + 1
+        FilledTonalIconButton(
+            onClick = { set(less) },
+            enabled = less in range,
+            modifier = Modifier.size(40.dp),
+        ) { Icon(Ico.minus, contentDescription = tr("Decrease")) }
+        Text("$value", style = MaterialTheme.typography.labelLarge)
         val can = more in range && ok(more)
-        Box(Modifier.size(30.dp).clip(CircleShape).background(pal.content).clickable(enabled = can) { set(more) }, contentAlignment = Alignment.Center) {
-            Text("+", color = if (can) pal.text else pal.faint)
-        }
+        FilledTonalIconButton(
+            onClick = { set(more) },
+            enabled = can,
+            modifier = Modifier.size(40.dp),
+        ) { Icon(Ico.plus, contentDescription = tr("Increase")) }
     }
 }
 
@@ -1522,8 +1541,12 @@ private fun ActionOptions(d: Deck, a: JSONObject, page: JSONObject, put: (Array<
     @Composable fun pick(opts: List<Pair<String, String>>, chosen: String, fn: (String) -> Unit) {
         if (opts.isEmpty()) { Text(tr("Nothing to choose from yet"), color = pal.muted, fontSize = 12.sp); return }
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            for ((id, name) in opts) Box(Modifier.clip(RoundedCornerShape(50)).background(if (id == chosen) pal.accent else pal.content).clickable { fn(id) }.padding(horizontal = 10.dp, vertical = 6.dp)) {
-                Text(name, color = if (id == chosen) Color.White else pal.text, fontSize = 12.sp, maxLines = 1)
+            for ((id, name) in opts) {
+                FilterChip(
+                    selected = id == chosen,
+                    onClick = { fn(id) },
+                    label = { Text(name, maxLines = 1) },
+                )
             }
         }
     }
