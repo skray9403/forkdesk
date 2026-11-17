@@ -356,7 +356,7 @@ fun LanguageCard(core: Core) {
             I18n.LANGUAGES.forEachIndexed { index, (code, label) ->
                 if (index > 0) HorizontalDivider(Modifier.padding(start = 16.dp))
                 ListItem(
-                    headlineContent = { Text(label) },
+                    content = { Text(label) },
                     leadingContent = { Text(I18n.FLAGS[code].orEmpty(), style = MaterialTheme.typography.titleMedium) },
                     trailingContent = {
                         RadioButton(
@@ -440,7 +440,7 @@ fun MacRow(
 ) {
     if (!first) HorizontalDivider(Modifier.padding(start = 16.dp, end = 16.dp))
     ListItem(
-        headlineContent = { Text(label, style = MaterialTheme.typography.bodyLarge) },
+        content = { Text(label, style = MaterialTheme.typography.bodyLarge) },
         supportingContent = if (hint.isNotEmpty()) {
             { Text(hint, style = MaterialTheme.typography.bodyMedium) }
         } else null,
