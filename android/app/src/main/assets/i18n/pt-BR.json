@@ -1240,6 +1240,5 @@
   "Teal": "Verde-azulado",
   "{other} is {where} {me}.": "{other} está {where} de {me}.",
   "Bluetooth fallback": "Conexão Bluetooth de reserva",
-  "After Wi-Fi or USB disconnects, searches nearby for 5 minutes. A Bluetooth session stays connected until Wi-Fi or USB returns.": "Após a desconexão do Wi-Fi ou USB, procura dispositivos próximos por 5 minutos. Uma sessão Bluetooth conectada permanece ativa até que o Wi-Fi ou USB volte.",
-  "Turn off Bluetooth on Wi-Fi connections": "Desativar o Bluetooth em conexões Wi-Fi"
+  "After Wi-Fi or USB disconnects, searches nearby for 5 minutes. A Bluetooth session stays connected until Wi-Fi or USB returns.": "Após a desconexão do Wi-Fi ou USB, procura dispositivos próximos por 5 minutos. Uma sessão Bluetooth conectada permanece ativa até que o Wi-Fi ou USB volte."
 }
