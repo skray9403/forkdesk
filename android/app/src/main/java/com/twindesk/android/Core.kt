@@ -247,6 +247,8 @@ class Core private constructor(val ctx: Context) : Link.Events {
             bleFallbackHostId = transportPrefs.getString("ble_fallback_host", "").orEmpty()
             bleFallbackExpiredHostId = ""
             val h = store.hosts().find { it.id == bleFallbackHostId }
+            if (ble.allowed() && ble.radioOn) runCatching { ble.scan(true) }
+            if (serve.allowed() && ble.radioOn) runCatching { serve.advertise(true) }
             if (h != null) {
                 resumeHost = h
                 resumeUntil = savedDeadline
