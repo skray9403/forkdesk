@@ -1240,5 +1240,6 @@
   "Teal": "Бирюзовый",
   "{other} is {where} {me}.": "{other} находится {where} относительно {me}.",
   "Bluetooth fallback": "Резервное подключение Bluetooth",
-  "After Wi-Fi or USB disconnects, searches nearby for 5 minutes. A Bluetooth session stays connected until Wi-Fi or USB returns.": "После отключения Wi‑Fi или USB поиск устройств поблизости продолжается 5 минут. Установленное Bluetooth-соединение сохраняется, пока Wi‑Fi или USB не подключится снова."
+  "After Wi-Fi or USB disconnects, searches nearby for 5 minutes. A Bluetooth session stays connected until Wi-Fi or USB returns.": "После отключения Wi‑Fi или USB поиск устройств поблизости продолжается 5 минут. Установленное Bluetooth-соединение сохраняется, пока Wi‑Fi или USB не подключится снова.",
+  "Turn off Bluetooth on Wi-Fi connections": "Выключать Bluetooth при подключении по Wi‑Fi"
 }
