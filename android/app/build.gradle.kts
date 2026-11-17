@@ -6,6 +6,7 @@ plugins {
 android {
     namespace = "com.twindesk.android"
     compileSdk = 37
+    compileSdkMinor = 1
     defaultConfig {
         applicationId = "com.twindesk.android"
         minSdk = 29 // Android 10: wireless debugging needs 11, everything else works from 10
