@@ -630,7 +630,10 @@ class Core private constructor(val ctx: Context) : Link.Events {
 
     fun forget(id: String) {
         if (returnHost()?.id == id) stopReturn()
-        if (link.host?.id == id) link.disconnect()
+        if (link.host?.id == id) {
+            requestedPhysicalTransport = ""
+            link.disconnect()
+        }
         store.forgetHost(id)
         changed()
     }
