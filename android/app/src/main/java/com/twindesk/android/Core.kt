@@ -354,8 +354,13 @@ class Core private constructor(val ctx: Context) : Link.Events {
     fun connect(h: Host) {
         if (link.connected && link.host?.id == h.id && link.host?.fp == h.fp) return
         bleFallbackExpiredHostId = ""
+        if (bleOn && !link.connected) beginBleFallback(h, restart = true)
         stopReturn()
         connect(h, false)
+        if (bleFallbackUntil > System.currentTimeMillis()) {
+            resumeHost = h
+            resumeUntil = bleFallbackUntil
+        }
     }
 
     // skipNet: the network just failed to reach it (a stale address after the Wi-Fi went): Bluetooth first.
