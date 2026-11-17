@@ -154,10 +154,6 @@ fun Theme(content: @Composable () -> Unit) {
         onPrimary = if (accent.luminance() > 0.5f) Color.Black else Color.White,
         primaryContainer = accent.copy(alpha = if (dark) 0.30f else 0.14f),
         onPrimaryContainer = accent,
-        secondary = accent,
-        onSecondary = if (accent.luminance() > 0.5f) Color.Black else Color.White,
-        secondaryContainer = accent.copy(alpha = if (dark) 0.24f else 0.10f),
-        onSecondaryContainer = accent,
     )
 
     val p = Palette(
