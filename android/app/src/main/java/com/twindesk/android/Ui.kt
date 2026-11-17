@@ -278,9 +278,8 @@ fun NavItem(
     NavigationDrawerItem(
         label = { Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         selected = selected,
-        onClick = onClick,
+        onClick = { if (enabled) onClick() },
         modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp).alpha(if (enabled) 1f else 0.38f),
-        enabled = enabled,
         icon = { Icon(icon, contentDescription = null) },
         badge = { if (on) Badge(containerColor = pal.good) },
         colors = NavigationDrawerItemDefaults.colors(
