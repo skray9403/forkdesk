@@ -189,7 +189,6 @@ object SearchIndex {
         Entry("Last closed for", { tr("Last closed for") }, "Banking apps", "General", ""),
         Entry("Back on", { tr("Back on") }, "Banking apps", "General", ""),
         Entry("Appearance", { tr("Appearance") }, "", "General", ""),
-        Entry("Theme", { tr("Theme") }, "Appearance", "General", ""),
         Entry("Updates", { tr("Updates") }, "", "About", ""),
         Entry("Couldn’t update", { tr("Couldn’t update") }, "Updates", "About", ""),
         Entry("Check automatically", { tr("Check automatically") }, "Updates", "About", ""),
