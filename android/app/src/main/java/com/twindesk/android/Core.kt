@@ -52,6 +52,7 @@ class Core private constructor(val ctx: Context) : Link.Events {
     @Volatile private var resumeUntil = 0L
     @Volatile private var resumeHost: Host? = null
     private val returnPrefs = ctx.getSharedPreferences("phone-return", Context.MODE_PRIVATE)
+    private val transportPrefs = ctx.getSharedPreferences("transport-state", Context.MODE_PRIVATE)
     @Volatile private var returnGeneration = 0
     @Volatile private var returnAfter = 0L
     private var returnFailures = 0
@@ -136,8 +137,8 @@ class Core private constructor(val ctx: Context) : Link.Events {
         if (store.flag("remote.btpad", false)) btPad.start()
         runCatching { bank.start() }.onFailure { Log.e("TwinDesk", "bank", it) }
         bg.scheduleWithFixedDelay({ runCatching { bleTick() }.onFailure { Log.e("TwinDesk", "ble", it) } }, 2, 2, TimeUnit.SECONDS)
-        // A cold start with no active session gets the same bounded BLE discovery window.
-        if (bleOn && !link.connected) beginBleFallback()
+        // Restore only a real pending recovery window or a session interrupted by process death.
+        restoreTransportState()
         // Quiet links (Link.kt, shared/quiet.js, #143): what keeps the session pinging every second.
         // Clipboard, notifications and cursor sharing switched on don't: their messages go when
         // something happens, and a message makes the link active at once.
@@ -198,17 +199,75 @@ class Core private constructor(val ctx: Context) : Link.Events {
     fun setBleEnabled(on: Boolean) {
         store.setFlag("ble", on)
         if (!on) {
-            bleFallbackUntil = 0L
-            bleFallbackHostId = ""
-            bleFallbackExpiredHostId = ""
+            clearBleFallback()
             resumeUntil = 0L
             resumeHost = null
-            if (link.ble) link.disconnect()
+            if (link.ble) {
+                establishedTransport = ""
+                clearActiveTransport()
+                link.disconnect()
+            } else if (!link.connected) {
+                clearActiveTransport()
+            }
             bg.execute { runCatching { ble.stop() }; runCatching { serve.stop() } }
-        } else if (!link.connected || link.ble) {
+        } else if (!link.connected) {
             beginBleFallback(restart = true)
         }
         changed()
+    }
+
+    private fun clearBleFallback(resetExpired: Boolean = true) {
+        bleFallbackUntil = 0L
+        bleFallbackHostId = ""
+        if (resetExpired) bleFallbackExpiredHostId = ""
+        transportPrefs.edit()
+            .remove("ble_fallback_until")
+            .remove("ble_fallback_host")
+            .commit()
+    }
+
+    private fun clearActiveTransport() {
+        transportPrefs.edit()
+            .remove("active_transport")
+            .remove("active_host_id")
+            .commit()
+    }
+
+    private fun restoreTransportState() {
+        if (!bleOn) {
+            clearBleFallback()
+            clearActiveTransport()
+            return
+        }
+
+        val now = System.currentTimeMillis()
+        val savedDeadline = transportPrefs.getLong("ble_fallback_until", 0L)
+        if (savedDeadline > now) {
+            bleFallbackUntil = savedDeadline
+            bleFallbackHostId = transportPrefs.getString("ble_fallback_host", "").orEmpty()
+            bleFallbackExpiredHostId = ""
+            val h = store.hosts().find { it.id == bleFallbackHostId }
+            if (h != null) {
+                resumeHost = h
+                resumeUntil = savedDeadline
+                bg.schedule({ resume() }, 1500, TimeUnit.MILLISECONDS)
+            }
+            Log.i("TwinDesk", "Restored Bluetooth recovery window: ${(savedDeadline - now) / 1000}s")
+            return
+        }
+
+        if (savedDeadline != 0L) clearBleFallback()
+        val previousTransport = transportPrefs.getString("active_transport", "").orEmpty()
+        val previousHostId = transportPrefs.getString("active_host_id", "").orEmpty()
+        clearActiveTransport()
+
+        // A process restart destroys the socket too. Treat the last live session as an unexpected
+        // transport loss, starting the five-minute clock when this is noticed.
+        if (previousTransport.isNotEmpty()) {
+            val h = store.hosts().find { it.id == previousHostId }
+            beginBleFallback(h, restart = true)
+            if (h != null) bg.schedule({ resume() }, 1500, TimeUnit.MILLISECONDS)
+        }
     }
 
     private fun beginBleFallback(host: Host? = null, restart: Boolean = false) {
@@ -225,6 +284,12 @@ class Core private constructor(val ctx: Context) : Link.Events {
             resumeHost = host
             resumeUntil = bleFallbackUntil
         }
+        transportPrefs.edit()
+            .putLong("ble_fallback_until", bleFallbackUntil)
+            .putString("ble_fallback_host", bleFallbackHostId)
+            .remove("active_transport")
+            .remove("active_host_id")
+            .commit()
         Log.i("TwinDesk", "Bluetooth recovery window: ${(bleFallbackUntil - now).coerceAtLeast(0) / 1000}s")
         if (ble.allowed() && ble.radioOn) runCatching { ble.scan(true) }
         if (serve.allowed() && ble.radioOn) runCatching { serve.advertise(true) }
@@ -240,9 +305,7 @@ class Core private constructor(val ctx: Context) : Link.Events {
         // stop scanning/advertising, and release both BLE GATT sides.
         if (link.connected && !link.ble) {
             establishedTransport = if (link.wired) "usb" else "wifi"
-            bleFallbackUntil = 0L
-            bleFallbackHostId = ""
-            bleFallbackExpiredHostId = ""
+            clearBleFallback()
             resumeUntil = 0L
             resumeHost = null
             link.dropAlt(force = true)
@@ -257,9 +320,7 @@ class Core private constructor(val ctx: Context) : Link.Events {
         // branch above shuts Bluetooth down.
         if (link.connected && link.ble) {
             establishedTransport = "bluetooth"
-            bleFallbackUntil = 0L
-            bleFallbackHostId = ""
-            bleFallbackExpiredHostId = ""
+            clearBleFallback()
             ble.scan(false)
             serve.advertise(false)
             val h = link.host ?: return
@@ -289,8 +350,7 @@ class Core private constructor(val ctx: Context) : Link.Events {
         // reopen another five-minute window.
         if (bleFallbackUntil != 0L) {
             bleFallbackExpiredHostId = bleFallbackHostId
-            bleFallbackUntil = 0L
-            bleFallbackHostId = ""
+            clearBleFallback(resetExpired = false)
             resumeUntil = 0L
             resumeHost = null
             Log.i("TwinDesk", "Bluetooth recovery window expired; stopping BLE")
@@ -485,6 +545,9 @@ class Core private constructor(val ctx: Context) : Link.Events {
 
     fun disconnect() {
         stopReturn()
+        clearBleFallback()
+        clearActiveTransport()
+        establishedTransport = ""
         resumeUntil = 0
         resumeHost = null
         resumeLater = null
@@ -574,9 +637,11 @@ class Core private constructor(val ctx: Context) : Link.Events {
     override fun onWelcome(host: Host) {
         Log.i("TwinDesk", "session with ${host.name}")
         establishedTransport = when { link.wired -> "usb"; link.ble -> "bluetooth"; else -> "wifi" }
-        bleFallbackUntil = 0L
-        bleFallbackHostId = ""
-        bleFallbackExpiredHostId = ""
+        clearBleFallback()
+        transportPrefs.edit()
+            .putString("active_transport", establishedTransport)
+            .putString("active_host_id", host.id)
+            .commit()
         resumeHost = null
         rememberReturn(host, link.sessionMarker())
         resumeUntil = 0
@@ -621,11 +686,13 @@ class Core private constructor(val ctx: Context) : Link.Events {
         }
         val wasEstablished = establishedTransport.isNotEmpty()
         establishedTransport = ""
+        clearActiveTransport()
         val accidental = code == null || code !in setOf("local", "paused", "reclaim", "bad_message", Proto.E.VERSION_MISMATCH, Proto.E.RELEASED, Proto.E.REPLACED, Proto.E.BAD_TOKEN, Proto.E.BUSY, Proto.E.ASLEEP)
 
         // A dropped live Wi-Fi, USB or Bluetooth session starts one new five-minute window.
-        // Failed reconnect attempts must not extend that deadline.
+        // Failed reconnect attempts do not extend an existing deadline; intentional closes cancel it.
         if (wasEstablished && accidental) beginBleFallback(host, restart = true)
+        else if (!accidental) clearBleFallback()
         if (!wasEstablished && bleFallbackExpiredHostId == host.id) return
 
         // Capable Macs retain their non-takeover LAN reclaim path. During the BLE window,
