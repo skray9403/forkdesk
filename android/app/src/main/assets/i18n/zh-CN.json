@@ -101,7 +101,6 @@
   "Bluetooth gamepad · {name}": "蓝牙游戏手柄 · {name}",
   "Bluetooth is off on this device": "此设备的蓝牙已关闭",
   "Bluetooth is off on this phone": "此手机的蓝牙已关闭",
-  "Bluetooth stays on as a fallback if Wi-Fi drops": "Wi-Fi 断开时蓝牙作为备用保持开启",
   "Bluetooth stopped: turn it on again": "蓝牙已停止：请重新打开",
   "Bluetooth with computers": "通过蓝牙连接电脑",
   "Both ways": "双向",
@@ -945,7 +944,6 @@
   "Try a new code.": "请尝试新的代码。",
   "Try again": "重试",
   "Try “share pc audio to phone”, “dark mode” or “send a file”": "试试“把电脑声音分享到手机”“深色模式”或“发送文件”",
-  "Turn off Bluetooth on Wi-Fi connections": "通过 Wi-Fi 连接时关闭蓝牙",
   "Turn off Developer options": "关闭开发者选项",
   "Turn off USB and wireless debugging in Developer options if {app} still refuses to open.": "如果 {app} 仍拒绝打开，请在开发者选项中关闭 USB 调试和无线调试。",
   "Turn off wireless debugging when disconnected": "断开连接时关闭无线调试",
@@ -1036,7 +1034,6 @@
   "Where {name} is": "{name} 的位置",
   "Which are in the bottom bar, and in what order. Or hold the bar": "哪些在底部栏，以及顺序。也可以长按底部栏",
   "While TwinDesk is open, or at any time with wireless debugging": "在 TwinDesk 打开时，或通过无线调试随时",
-  "While connected to {name} over the same Wi-Fi network": "通过同一 Wi-Fi 网络连接到 {name} 时",
   "Wi-Fi": "Wi-Fi",
   "Wi-Fi Direct": "Wi-Fi 直连",
   "Wi-Fi Direct couldn’t start": "WLAN 直连无法启动",
@@ -1241,5 +1238,7 @@
   "Purple": "紫色",
   "Red": "红色",
   "Teal": "青绿色",
-  "{other} is {where} {me}.": "{other} 位于 {me} 的{where}。"
+  "{other} is {where} {me}.": "{other} 位于 {me} 的{where}。",
+  "Bluetooth fallback": "蓝牙备用连接",
+  "After Wi-Fi or USB disconnects, searches nearby for 5 minutes. A Bluetooth session stays connected until Wi-Fi or USB returns.": "Wi-Fi 或 USB 断开后，会搜索附近设备 5 分钟。建立蓝牙会话后，将保持连接，直到 Wi-Fi 或 USB 恢复。"
 }
