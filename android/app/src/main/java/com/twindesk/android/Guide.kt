@@ -172,7 +172,7 @@ private fun Step(
     action: @Composable () -> Unit,
 ) {
     ListItem(
-        headlineContent = {
+        content = {
             Text(
                 title,
                 style = if (compact) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodyLarge,
