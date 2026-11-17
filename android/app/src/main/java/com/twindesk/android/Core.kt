@@ -307,6 +307,15 @@ class Core private constructor(val ctx: Context) : Link.Events {
         // stop scanning/advertising, and release both BLE GATT sides.
         if (link.connected && !link.ble) {
             establishedTransport = if (link.wired) "usb" else "wifi"
+            val activeHostId = link.host?.id.orEmpty()
+            if (transportPrefs.getString("active_transport", "") != establishedTransport ||
+                transportPrefs.getString("active_host_id", "") != activeHostId
+            ) {
+                transportPrefs.edit()
+                    .putString("active_transport", establishedTransport)
+                    .putString("active_host_id", activeHostId)
+                    .commit()
+            }
             clearBleFallback()
             resumeUntil = 0L
             resumeHost = null
