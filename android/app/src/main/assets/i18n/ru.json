@@ -1230,5 +1230,22 @@
   "Auto-rotate is on: the screen turns with this phone": "Автоповорот включён: экран поворачивается вместе с телефоном",
   "Auto-rotate is off: the screen stays as it is": "Автоповорот выключен: экран остаётся как есть",
   "Couldn’t take the screenshot": "Не удалось сделать снимок экрана",
-  "Screenshot saved in Pictures › TwinDesk": "Снимок экрана сохранён в «Изображения › TwinDesk»"
+  "Screenshot saved in Pictures › TwinDesk": "Снимок экрана сохранён в «Изображения › TwinDesk»",
+  "Above": "Сверху",
+  "Add page": "Добавить страницу",
+  "Below": "Снизу",
+  "Blue": "Синий",
+  "Copy again": "Скопировать ещё раз",
+  "Decrease": "Уменьшить",
+  "Green": "Зелёный",
+  "Grey": "Серый",
+  "Increase": "Увеличить",
+  "Indigo": "Индиго",
+  "Orange": "Оранжевый",
+  "Pink": "Розовый",
+  "Position of {other} relative to {me}": "Положение {other} относительно {me}",
+  "Purple": "Фиолетовый",
+  "Red": "Красный",
+  "Teal": "Бирюзовый",
+  "{other} is {where} {me}.": "{other} находится {where} относительно {me}."
 }
