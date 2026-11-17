@@ -534,10 +534,10 @@ fun DirHead(from: String, fromPhone: Boolean, to: String, toPhone: Boolean) {
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Icon(if (fromPhone) Ico.phone else Ico.display, null, tint = MaterialTheme.colorScheme.primary)
-        Text(from, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(from, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
         Icon(Ico.right, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         Icon(if (toPhone) Ico.phone else Ico.display, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(to, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(to, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
     }
 }
 
