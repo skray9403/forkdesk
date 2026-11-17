@@ -1,8 +1,6 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
-// The app's window, laid out like TwinDesk on the Mac: a sidebar with the TwinDesk logo and the
-// pages in the Mac's groups (Display, Input, Share, More, then General and About), each page a
-// heading with its main switch over cards of rows. On a phone held upright the sidebar becomes
-// tabs along the bottom (the rest under More). The building blocks are in Ui.kt.
+// Android application shell: adaptive Material navigation, device overview and feature pages.
+// Feature logic remains in its existing modules; Ui.kt contains shared Material presentation.
 package com.twindesk.android
 
 import android.Manifest
@@ -354,7 +352,7 @@ fun App(core: Core, resumed: Int) {
         if (wide) {
             Row(Modifier.safeDrawingPadding()) {
                 Sidebar(core, v, tab) { tab = it }
-                // the page in a rounded sheet beside the sidebar, as the phone's under its branding
+                // the feature content alongside the navigation drawer
                 Box(Modifier.weight(1f).fillMaxHeight().padding(start = 8.dp).background(pal.sheet)) {
                     Page(core, v, resumed, tab, Modifier.fillMaxSize())
                 }
@@ -378,14 +376,11 @@ fun App(core: Core, resumed: Int) {
             Column(Modifier.safeDrawingPadding()) {
                 if (!more && tab == BOTTOM.first()) TopIdentity(core, v) // TwinDesk on the main page only
                 else Spacer(Modifier.height(10.dp))
-                // The page in a big rounded sheet under the branding; the bar floats at its bottom.
+                // The feature content and standard Material navigation bar.
                 Column(Modifier.weight(1f).fillMaxWidth().background(pal.sheet)) {
                 if (more) MoreList(core, v, BOTTOM, Modifier.weight(1f)) { go(it, false) }
                 else Page(core, v, resumed, tab, Modifier.weight(1f))
-                // A Material navigation bar, as Google's own apps have it: line icons, the selected
-                // one in a pill of the accent colour, labels under them, the bar itself rounded and
-                // floating off the edges (the tablet keeps the Mac-like sidebar with coloured tiles).
-                // Search: its own round button at the bar's right end (Search.kt). Holding the bar: Arrange.
+                // Standard Material navigation. Search remains a separate action; holding the bar opens Arrange.
                 Row(Modifier.padding(start = 14.dp, end = 14.dp, bottom = 10.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 NavigationBar(
                     containerColor = MaterialTheme.colorScheme.surfaceContainer,
@@ -681,10 +676,9 @@ private fun OverviewPage(core: Core, v: Int, connection: Boolean) {
         }
     }
 
-    // The hero: this device, the link, the computer (the Mac's `.hero`). The phone: a card in the
-    // accent's gradient with everything on it in white.
+    // Connection summary. The card uses the same Material surface treatment on phone and tablet.
     val heroAccent = pal.accent
-    if (Modern.on) HeroCard { HeroBody(core, v, me, host, link, heroAccent) } else MacCard { HeroBody(core, v, me, host, link, heroAccent) }
+    HeroCard { HeroBody(core, v, me, host, link, heroAccent) }
 
 
     // The computer's own controls (dev.state, DevCtl.kt): ring, lock, sleep, Bluetooth, Do not disturb, volume.
