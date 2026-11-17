@@ -111,7 +111,7 @@ fun SetupScreen(core: Core, ctx: Context, v: Int, done: () -> Unit) {
                 items.forEachIndexed { index, item ->
                     if (index > 0) HorizontalDivider(Modifier.padding(start = 56.dp))
                     ListItem(
-                        headlineContent = {
+                        content = {
                             Text(item.title + if (item.required) "" else tr(" (optional)"))
                         },
                         supportingContent = { Text(item.hint) },
