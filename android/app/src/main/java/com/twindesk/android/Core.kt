@@ -353,6 +353,7 @@ class Core private constructor(val ctx: Context) : Link.Events {
     // The UI's Connect, or the Mac's invite: take the session.
     fun connect(h: Host) {
         if (link.connected && link.host?.id == h.id && link.host?.fp == h.fp) return
+        bleFallbackExpiredHostId = ""
         stopReturn()
         connect(h, false)
     }
@@ -571,8 +572,21 @@ class Core private constructor(val ctx: Context) : Link.Events {
 
     override fun onWelcome(host: Host) {
         Log.i("TwinDesk", "session with ${host.name}")
+        establishedTransport = when { link.wired -> "usb"; link.ble -> "bluetooth"; else -> "wifi" }
+        bleFallbackUntil = 0L
+        bleFallbackHostId = ""
+        bleFallbackExpiredHostId = ""
+        resumeHost = null
         rememberReturn(host, link.sessionMarker())
         resumeUntil = 0
+        if (link.ble) {
+            ble.scan(false)
+            serve.advertise(false)
+        } else {
+            link.dropAlt(force = true)
+            ble.stop()
+            serve.stop()
+        }
         Notify.cancelInvite(ctx)
         // One session: a phone's ends (Peer.started ends ours the other way).
         if (peer.connected) { Log.i("TwinDesk", "ending the phone session for ${host.name}"); peer.disconnect() }
@@ -604,9 +618,17 @@ class Core private constructor(val ctx: Context) : Link.Events {
             for (f in features) runCatching { f.onClosed() }
             changed()
         }
-        // Capable Macs can be reclaimed without taking another session. Keep this intent across
-        // outages, sleep and process death, until Disconnect/Forget/replacement explicitly ends it.
-        if (link.ble && returnHost()?.id == host.id) stopReturn()
+        val wasEstablished = establishedTransport.isNotEmpty()
+        establishedTransport = ""
+        val accidental = code == null || code !in setOf("local", "paused", "reclaim", "bad_message", Proto.E.VERSION_MISMATCH, Proto.E.RELEASED, Proto.E.REPLACED, Proto.E.BAD_TOKEN, Proto.E.BUSY, Proto.E.ASLEEP)
+
+        // A dropped live Wi-Fi, USB or Bluetooth session starts one new five-minute window.
+        // Failed reconnect attempts must not extend that deadline.
+        if (wasEstablished && accidental) beginBleFallback(host, restart = true)
+        if (!wasEstablished && bleFallbackExpiredHostId == host.id) return
+
+        // Capable Macs retain their non-takeover LAN reclaim path. During the BLE window,
+        // returnTick can also use the already-paired Bluetooth pipe when the Mac is off-LAN.
         if (returnHost()?.id == host.id) {
             if (link.state == "failed" || code in setOf("local", "reclaim", "bad_message", Proto.E.VERSION_MISMATCH, Proto.E.RELEASED, Proto.E.REPLACED, Proto.E.BAD_TOKEN)) stopReturn()
             else {
@@ -615,11 +637,9 @@ class Core private constructor(val ctx: Context) : Link.Events {
             }
             return
         }
-        // Legacy peers retain the existing thirty-second retry behavior.
-        val accidental = code == null || code !in setOf("local", "paused", "reclaim", Proto.E.RELEASED, Proto.E.REPLACED, Proto.E.BAD_TOKEN, Proto.E.BUSY, Proto.E.ASLEEP)
         if (!accidental || link.state == "failed") return
         if (inBackground()) { resumeLater = host; Log.i("TwinDesk", "dropped in the background: reconnecting when TwinDesk opens"); return }
-        if (resumeUntil == 0L) resumeUntil = System.currentTimeMillis() + Proto.PHONE_GRACE_MS
+        if (resumeUntil == 0L) resumeUntil = bleFallbackUntil.takeIf { it > System.currentTimeMillis() } ?: (System.currentTimeMillis() + Proto.PHONE_GRACE_MS)
         resumeHost = host
         bg.schedule({ resume() }, 1500, TimeUnit.MILLISECONDS)
     }
@@ -658,6 +678,14 @@ class Core private constructor(val ctx: Context) : Link.Events {
         val now = System.currentTimeMillis()
         if (now < returnAfter) return
         val seen = discovery.found[h.id]
+        if (bleOn && bleFallbackUntil > now &&
+            (ble.get(h.id) != null || serve.get(h.id) != null) &&
+            (seen == null || seen.os != "mac" || !seen.rc)
+        ) {
+            returnAfter = now + 5000L
+            connect(h, true)
+            return
+        }
         if (seen != null && (seen.os != "mac" || !seen.rc)) return
         val gen = returnGeneration
         returnAfter = now + 5000L
