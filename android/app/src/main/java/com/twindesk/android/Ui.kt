@@ -1,5 +1,6 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
 // Shared Material 3 presentation primitives for feature pages, navigation and settings.
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.twindesk.android
 
 import androidx.compose.foundation.BorderStroke
