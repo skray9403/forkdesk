@@ -109,7 +109,7 @@ fun HistoryScreen(core: Core, v: Int, what: String) {
                     listOf(e.app, e.title).filter { it.isNotEmpty() }.joinToString(" · ")
                 }
                 ListItem(
-                    headlineContent = {
+                    content = {
                         Text(title, maxLines = if (clip) 3 else 1, overflow = TextOverflow.Ellipsis)
                     },
                     supportingContent = {
