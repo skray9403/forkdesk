@@ -1230,5 +1230,22 @@
   "Auto-rotate is on: the screen turns with this phone": "Otomatik döndürme açık: ekran bu telefonla birlikte döner",
   "Auto-rotate is off: the screen stays as it is": "Otomatik döndürme kapalı: ekran olduğu gibi kalır",
   "Couldn’t take the screenshot": "Ekran görüntüsü alınamadı",
-  "Screenshot saved in Pictures › TwinDesk": "Ekran görüntüsü Resimler › TwinDesk içine kaydedildi"
+  "Screenshot saved in Pictures › TwinDesk": "Ekran görüntüsü Resimler › TwinDesk içine kaydedildi",
+  "Above": "Üst",
+  "Add page": "Sayfa ekle",
+  "Below": "Alt",
+  "Blue": "Mavi",
+  "Copy again": "Yeniden kopyala",
+  "Decrease": "Azalt",
+  "Green": "Yeşil",
+  "Grey": "Gri",
+  "Increase": "Artır",
+  "Indigo": "Çivit mavisi",
+  "Orange": "Turuncu",
+  "Pink": "Pembe",
+  "Position of {other} relative to {me}": "{other} öğesinin {me} öğesine göre konumu",
+  "Purple": "Mor",
+  "Red": "Kırmızı",
+  "Teal": "Camgöbeği",
+  "{other} is {where} {me}.": "{other}, {me} öğesinin {where} tarafında."
 }
