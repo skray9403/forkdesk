@@ -866,7 +866,7 @@ private fun TileView(d: Deck, t: JSONObject, cw: Dp, ch: Dp, gap: Dp, editing: B
                 ) { ch, _ -> ch.consume(); val v = at(ch.position.x); drag = v; d.set(id, v) }
             }.pointerInput(id + "tap") {
                 detectTapGestures { o -> d.set(id, (o.x / size.width).coerceIn(0f, 1f)); drag = null }
-            } else Modifier.clickable(onClick = onTap),
+            } else Modifier.clickable(onClick = onTap)),
         shape = MaterialTheme.shapes.large,
         color = bg,
         contentColor = fg,
