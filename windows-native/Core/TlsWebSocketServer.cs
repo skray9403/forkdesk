@@ -132,8 +132,6 @@ public sealed class TlsWebSocketServer : IAsyncDisposable
             await ReceiveLoopAsync(connection, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
-        catch (WebSocketException) { }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
         catch (Exception ex)
         {
             try { ConnectionError?.Invoke(ex); } catch { }
