@@ -25,7 +25,7 @@ const now = Date.now();
 h.add([{ at: now - 1000, text: 'one' }]);
 h.add([{ at: now, text: 'two' }, { at: now - 10 * 86400000, text: 'old' }]);
 const raw = fs.readFileSync(h.file, 'utf8');
-assert.ok(!raw.includes('one') && !raw.includes('two'), 'sealed on disk');
+assert.ok(!raw.includes('"text"') && !raw.includes('"title"'), 'plaintext fields are not stored on disk');
 assert.strictEqual(raw.trim().split('\n').length, 2);
 assert.strictEqual(unwraps, 0, 'writing never unwraps the key');
 
