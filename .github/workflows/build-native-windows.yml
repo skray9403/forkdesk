@@ -2,7 +2,7 @@ name: Build Native Windows
 
 on:
   push:
-    branches: [native-windows-foundation]
+    branches: [native-windows-foundation, 'native-windows-*']
     paths:
       - 'windows-native/**'
       - '.github/workflows/build-native-windows.yml'
