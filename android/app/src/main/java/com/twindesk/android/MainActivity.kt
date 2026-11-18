@@ -109,6 +109,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -576,7 +577,7 @@ fun App(core: Core, resumed: Int) {
                         Icon(
                             icon,
                             contentDescription = null,
-                            modifier = Modifier.animateIcon { checkedProgress },
+                            modifier = Modifier.animateIcon(checkedProgress = { checkedProgress }),
                         )
                     }
                 },
