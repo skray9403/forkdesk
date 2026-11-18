@@ -100,7 +100,7 @@ public sealed class NativeIdentityStore
             var certificate = X509CertificateLoader.LoadPkcs12(
                 pfxBytes,
                 passphrase,
-                X509KeyStorageFlags.Exportable | X509KeyStorageFlags.EphemeralKeySet);
+                X509KeyStorageFlags.Exportable | X509KeyStorageFlags.UserKeySet);
 
             if (!certificate.HasPrivateKey)
             {
