@@ -1,15 +1,8 @@
 namespace TwinDesk.Native.Core;
 
 public sealed record NearbyPeer(
-    string Id,
-    string Name,
-    PeerPlatform Platform,
-    string Address,
-    int Port,
-    string Fingerprint,
-    bool IsPaired,
-    bool IsConnected,
-    DateTimeOffset LastSeen);
+    string Id, string Name, PeerPlatform Platform, string Address, int Port,
+    string Fingerprint, bool IsPaired, bool IsConnected, DateTimeOffset LastSeen);
 
 public sealed record NativeCoreSnapshot(
     bool IsAvailable,
@@ -19,7 +12,9 @@ public sealed record NativeCoreSnapshot(
     string HostStatus = "",
     PairingPrompt? PendingPairing = null,
     IReadOnlyList<PairedDevice>? PairedDevices = null,
-    PairedDevice? ConnectedDevice = null)
+    PairedDevice? ConnectedDevice = null,
+    bool FirewallAllowed = false,
+    string FirewallStatus = "")
 {
     public static NativeCoreSnapshot Unavailable(string status) =>
         new(false, status, Array.Empty<NearbyPeer>());

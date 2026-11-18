@@ -60,6 +60,9 @@ public sealed partial class AndroidPage : Page
     private void ApplySnapshot(NativeCoreSnapshot snapshot)
     {
         DiscoveryStatusText.Text = $"{snapshot.Status}. {snapshot.HostStatus}";
+        FirewallInfoBar.IsOpen = !snapshot.FirewallAllowed;
+        FirewallInfoBar.Message = snapshot.FirewallStatus;
+        FixFirewallButton.IsEnabled = !snapshot.FirewallAllowed;
         var androidPeers = snapshot.NearbyPeers
             .Where(peer => peer.Platform == PeerPlatform.Android)
             .ToArray();
@@ -130,6 +133,27 @@ public sealed partial class AndroidPage : Page
         finally
         {
             RefreshButton.IsEnabled = _core is not null;
+        }
+    }
+
+    private async void FixFirewall_Click(object sender, RoutedEventArgs e)
+    {
+        var core = _core;
+        if (core is null) return;
+
+        FixFirewallButton.IsEnabled = false;
+        FirewallInfoBar.Message = "Windows will ask for administrator approval to add only the TwinDesk TCP/UDP listener rules.";
+        try
+        {
+            await core.FixFirewallAsync();
+            var snapshot = await core.GetSnapshotAsync();
+            FirewallInfoBar.IsOpen = !snapshot.FirewallAllowed;
+            FirewallInfoBar.Message = snapshot.FirewallStatus;
+        }
+        catch (Exception ex)
+        {
+            FirewallInfoBar.Message = $"Firewall repair was not completed: {ex.Message}";
+            FixFirewallButton.IsEnabled = true;
         }
     }
 

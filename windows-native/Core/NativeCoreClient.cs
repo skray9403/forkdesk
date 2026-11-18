@@ -3,20 +3,17 @@ using TwinDesk.Native.Core.Discovery;
 
 namespace TwinDesk.Native.Core;
 
-/// <summary>
-/// Coordinates the native Windows host, protocol-v1 pairing and local-network discovery.
-/// Feature messages are accepted by the host boundary but are not enabled until native
-/// feature services are ported.
-/// </summary>
 public sealed class NativeCoreClient : INativeCoreClient
 {
     private readonly PeerDiscoveryService _discovery;
     private readonly NativePeerHost _host;
+    private readonly NativeFirewallAccessService _firewall = new();
     private readonly SemaphoreSlim _gate = new(1, 1);
     private bool _started;
     private bool _disposed;
     private string _status = "Starting native services";
     private string _hostStatus = "Host server has not started";
+    private FirewallAccessStatus _firewallStatus = new(false, "Checking Windows Firewall access…");
 
     public event EventHandler<NativeCoreSnapshot>? SnapshotChanged;
 
@@ -71,6 +68,7 @@ public sealed class NativeCoreClient : INativeCoreClient
                 _status = $"Host is listening, but discovery is unavailable: {ex.Message}";
             }
 
+            _firewallStatus = await Task.Run(() => _firewall.Check(), cancellationToken).ConfigureAwait(false);
             Publish();
         }
         finally
@@ -109,6 +107,14 @@ public sealed class NativeCoreClient : INativeCoreClient
         return Task.CompletedTask;
     }
 
+    public async Task FixFirewallAsync(CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        _firewallStatus = await _firewall.EnsureAsync(AppContext.BaseDirectory, cancellationToken)
+            .ConfigureAwait(false);
+        Publish();
+    }
+
     public Task DisconnectAsync(CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -117,15 +123,24 @@ public sealed class NativeCoreClient : INativeCoreClient
 
     private void OnHostStateChanged() => Publish();
 
-    private NativeCoreSnapshot CreateSnapshot() => new(
-        _started,
-        _status,
-        _discovery.Snapshot(),
-        _host.IsListening,
-        _hostStatus,
-        _host.PendingPairing,
-        _host.PairedDevices,
-        _host.ConnectedDevice);
+    private NativeCoreSnapshot CreateSnapshot()
+    {
+        var pairedIds = _host.PairedDevices.Select(device => device.Id)
+            .ToHashSet(StringComparer.Ordinal);
+        var connectedId = _host.ConnectedDevice?.Id;
+        var nearbyPeers = _discovery.Snapshot()
+            .Select(peer => peer with
+            {
+                IsPaired = pairedIds.Contains(peer.Id),
+                IsConnected = string.Equals(peer.Id, connectedId, StringComparison.Ordinal)
+            })
+            .ToArray();
+
+        return new NativeCoreSnapshot(
+            _started, _status, nearbyPeers, _host.IsListening, _hostStatus,
+            _host.PendingPairing, _host.PairedDevices, _host.ConnectedDevice,
+            _firewallStatus.IsAllowed, _firewallStatus.Message);
+    }
 
     private void Publish(string? status = null)
     {

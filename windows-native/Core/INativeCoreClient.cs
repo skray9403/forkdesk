@@ -1,6 +1,5 @@
 namespace TwinDesk.Native.Core;
 
-/// <summary>UI-facing boundary for native Windows peer and session services.</summary>
 public interface INativeCoreClient : IAsyncDisposable
 {
     event EventHandler<NativeCoreSnapshot>? SnapshotChanged;
@@ -8,5 +7,6 @@ public interface INativeCoreClient : IAsyncDisposable
     Task RefreshDiscoveryAsync(CancellationToken cancellationToken = default);
     Task PairAsync(string peerId, CancellationToken cancellationToken = default);
     Task ApprovePairingAsync(bool allow, CancellationToken cancellationToken = default);
+    Task FixFirewallAsync(CancellationToken cancellationToken = default);
     Task DisconnectAsync(CancellationToken cancellationToken = default);
 }

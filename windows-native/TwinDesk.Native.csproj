@@ -21,5 +21,6 @@
     <Compile Remove="Tests/**/*.cs" />
     <ProjectReference Include="Core/TwinDesk.Native.Core.csproj" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.6.5" />
+    <Content Include="Firewall\AllowFirewall.ps1" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>
