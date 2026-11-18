@@ -18,6 +18,9 @@ permissions:
 jobs:
   build:
     runs-on: windows-2022
+    defaults:
+      run:
+        working-directory: windows-native
     steps:
       - uses: actions/checkout@v4
 
@@ -26,11 +29,14 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Restore
-        run: dotnet restore windows-native/TwinDesk.Native.csproj
+      - name: Restore x64
+        run: dotnet restore TwinDesk.Native.csproj -r win-x64
 
       - name: Build x64
-        run: dotnet build windows-native/TwinDesk.Native.csproj --configuration Release --no-restore -p:Platform=x64
+        run: dotnet build TwinDesk.Native.csproj --configuration Release --no-restore -r win-x64 -p:Platform=x64 --self-contained false
+
+      - name: Restore ARM64
+        run: dotnet restore TwinDesk.Native.csproj -r win-arm64
 
       - name: Build ARM64
-        run: dotnet build windows-native/TwinDesk.Native.csproj --configuration Release --no-restore -p:Platform=ARM64
+        run: dotnet build TwinDesk.Native.csproj --configuration Release --no-restore -r win-arm64 -p:Platform=ARM64 --self-contained false
