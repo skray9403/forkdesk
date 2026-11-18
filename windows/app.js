@@ -24,8 +24,8 @@
   let gap = null; // the gap before the current group (hidden with the group: renderSidebar)
   const custom = UI.navCustom(); // Arrange (shared/ui-arrange.js): the person's order, without the groups' gaps
   for (const def of UI.arrangeSort(UI.tabs.slice().sort((a, b) => orderOf(a) - orderOf(b)))) {
-    if (def.navHidden) { // reached another way (the phone tile)
-      views.set(def.id, { def, ...buildPage(def), navBtn: el('button'), stateEl: el('span') });
+    if (def.navHidden) { // reached another way (the phone tile): build on its first visit
+      views.set(def.id, { def, navBtn: el('button'), stateEl: el('span'), built: false });
       continue;
     }
     const group = custom ? 0 : GROUP[UI.baseOf(def)];
@@ -45,7 +45,8 @@
     if (def.bottom) navBtn.dataset.bottom = '1';
     navBtn.onclick = () => show(def.id, true);
     nav.append(el('li', {}, [navBtn]));
-    views.set(def.id, { def, ...buildPage(def), navBtn, stateEl, navLabel, gap });
+    // Register navigation now; build the page's controls only when it is first opened.
+    views.set(def.id, { def, navBtn, stateEl, navLabel, gap, built: false });
   }
   UI.arrangeHold(nav);
 
@@ -87,6 +88,17 @@
     return { page, body, master, render, headText, limitNote, wifiNote, art };
   }
 
+  function ensureBuilt(v) {
+    if (v.built) return;
+    Object.assign(v, buildPage(v.def));
+    v.built = true;
+    // Page builders can add peer-labelled content. Refresh those labels once its DOM exists.
+    if (UI.state) {
+      peerKey = '';
+      renderPeer(UI.state);
+    }
+  }
+
   // The session is through Bluetooth (pages that need Wi-Fi say so).
   const onBle = (s) => !!(s && s.net && s.net.transport === 'ble');
 
@@ -104,7 +116,10 @@
     if (want && want.def.web && !UI.webDev) id = 'web';
     else if (want && !want.def.web && !UI.WEB_KEEP.includes(want.def.id)) UI.webDev = null; // TwinDesk Web, AirPlay, General, About: both
     let v = views.get(id) || views.get(home(UI.state));
+    if (!v) return;
     if (UI.state && v.def.hidden && v.def.hidden(UI.state) && UI.tourPeek !== v.def.id) v = views.get(home(UI.state)) || v; // tourPeek: the tour shows it for now (shared/ui-tour.js)
+    if (!v) return;
+    ensureBuilt(v);
     if (current === v) {
       if (UI.state) { renderSidebar(UI.state); renderPage(v, UI.state); }
       return;
@@ -316,7 +331,7 @@
     const heads = { 'mac-pc': t('{device} on {host}', { device: p.Name, host: p.me }), 'pc-mac': t('{device} on {host}', { device: p.me, host: p.name }) }; // as the Mac: "Inuka on Inukas-MBA"
     for (const [id, text] of Object.entries(heads)) {
       const v = views.get(id);
-      if (v) v.headText.textContent = text;
+      if (v && v.headText) v.headText.textContent = text;
     }
     for (const e of document.querySelectorAll('[data-dir="m2p"]')) e.textContent = p.toMe;
     for (const e of document.querySelectorAll('[data-dir="p2m"]')) e.textContent = p.fromMe;
