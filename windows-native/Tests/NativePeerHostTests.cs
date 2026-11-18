@@ -116,10 +116,107 @@ public sealed class NativePeerHostTests
                                t.GetString() == ProtocolV1.Message.Pong);
             Assert.Equal(123456L, pong.RootElement.GetProperty("ts").GetInt64());
             Assert.Equal(phoneId, host.ConnectedDevice?.Id);
+
+            await SendAsync(client, new { t = ProtocolV1.Message.Bye });
+            await WaitUntilAsync(() => host.ConnectedDevice is null);
+            Assert.False(host.IsPhoneGraceActive);
         }
         finally
         {
             client.Dispose();
+            await host.DisposeAsync();
+            if (Directory.Exists(root))
+                Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task UnexpectedAndroidDisconnectBlocksWindowsUntilPhoneGraceExpires()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "TwinDesk.Native.Tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        using var identity = new NativeIdentityStore(root).LoadOrCreate("Test Windows PC");
+
+        const string phoneId = "android-grace-device";
+        const string phoneToken = "phone-grace-token";
+        const string windowsId = "windows-grace-device";
+        const string windowsToken = "windows-grace-token";
+        var now = DateTimeOffset.UtcNow;
+        var store = new JsonPairedDeviceStore(Path.Combine(root, "paired.json"));
+        store.Upsert(new PairedDevice(phoneId, "Pixel phone", "android",
+            ProtocolCrypto.Sha256Hex(phoneToken), now, now));
+        store.Upsert(new PairedDevice(windowsId, "Other PC", "win",
+            ProtocolCrypto.Sha256Hex(windowsToken), now, now));
+
+        await using var host = new NativePeerHost(
+            identity, root, port: 0, phoneGraceDuration: TimeSpan.FromMilliseconds(500));
+        using var phoneClient = new ClientWebSocket();
+        phoneClient.Options.RemoteCertificateValidationCallback = static (_, _, _, _) => true;
+        using var windowsClient = new ClientWebSocket();
+        windowsClient.Options.RemoteCertificateValidationCallback = static (_, _, _, _) => true;
+
+        try
+        {
+            await host.StartAsync();
+            var uri = new Uri($"wss://127.0.0.1:{host.Port}/");
+            await phoneClient.ConnectAsync(uri, CancellationToken.None);
+            await SendAsync(phoneClient, new
+            {
+                t = ProtocolV1.Message.Hello,
+                v = ProtocolV1.Version,
+                id = phoneId,
+                name = "Pixel phone",
+                os = ProtocolV1.PeerOs.Android,
+                token = phoneToken
+            });
+
+            using var phoneWelcome = await ReceiveUntilAsync(phoneClient,
+                element => element.TryGetProperty("t", out var type) &&
+                           type.GetString() == ProtocolV1.Message.Welcome);
+            Assert.Equal(phoneId, host.ConnectedDevice?.Id);
+
+            // A dropped socket, without protocol bye, must retain the phone's session claim.
+            phoneClient.Abort();
+            await WaitUntilAsync(() => host.IsPhoneGraceActive);
+            Assert.Equal(phoneId, host.PhoneGraceDeviceId);
+
+            await windowsClient.ConnectAsync(uri, CancellationToken.None);
+            await SendAsync(windowsClient, new
+            {
+                t = ProtocolV1.Message.Hello,
+                v = ProtocolV1.Version,
+                id = windowsId,
+                name = "Other PC",
+                os = ProtocolV1.PeerOs.Windows,
+                token = windowsToken
+            });
+
+            using var busy = await ReceiveUntilAsync(windowsClient,
+                element => element.TryGetProperty("t", out var type) &&
+                           type.GetString() == ProtocolV1.Message.Error);
+            Assert.Equal(ProtocolV1.Error.Busy, busy.RootElement.GetProperty("code").GetString());
+            Assert.Null(host.ConnectedDevice);
+
+            await WaitUntilAsync(() => !host.IsPhoneGraceActive);
+            await SendAsync(windowsClient, new
+            {
+                t = ProtocolV1.Message.Hello,
+                v = ProtocolV1.Version,
+                id = windowsId,
+                name = "Other PC",
+                os = ProtocolV1.PeerOs.Windows,
+                token = windowsToken
+            });
+
+            using var windowsWelcome = await ReceiveUntilAsync(windowsClient,
+                element => element.TryGetProperty("t", out var type) &&
+                           type.GetString() == ProtocolV1.Message.Welcome);
+            Assert.Equal(windowsId, host.ConnectedDevice?.Id);
+        }
+        finally
+        {
+            phoneClient.Dispose();
+            windowsClient.Dispose();
             await host.DisposeAsync();
             if (Directory.Exists(root))
                 Directory.Delete(root, recursive: true);

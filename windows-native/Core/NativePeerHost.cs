@@ -21,6 +21,10 @@ public sealed class NativePeerHost : IAsyncDisposable
     private CancellationTokenSource? _heartbeatStop;
     private Task? _heartbeatTask;
     private PeerSession? _active;
+    private DateTimeOffset _phoneGraceUntil = DateTimeOffset.MinValue;
+    private string? _phoneGraceDeviceId;
+    private string? _phoneGraceDeviceName;
+    private readonly TimeSpan _phoneGraceDuration;
     private bool _disposed;
 
     public event Action? StateChanged;
@@ -36,13 +40,30 @@ public sealed class NativePeerHost : IAsyncDisposable
         get { lock (_sessionSync) return _active?.Device; }
     }
 
-    public NativePeerHost(NativeIdentity identity, string dataDirectory, int port = ProtocolV1.Port)
+    public bool IsPhoneGraceActive
+    {
+        get { lock (_sessionSync) return IsPhoneGraceActiveLocked(DateTimeOffset.UtcNow); }
+    }
+
+    public string? PhoneGraceDeviceId
+    {
+        get { lock (_sessionSync) return IsPhoneGraceActiveLocked(DateTimeOffset.UtcNow) ? _phoneGraceDeviceId : null; }
+    }
+
+    public NativePeerHost(
+        NativeIdentity identity,
+        string dataDirectory,
+        int port = ProtocolV1.Port,
+        TimeSpan? phoneGraceDuration = null)
     {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentException.ThrowIfNullOrWhiteSpace(dataDirectory);
 
         _hostId = identity.Id;
         _hostName = identity.Name;
+        _phoneGraceDuration = phoneGraceDuration ?? TimeSpan.FromMilliseconds(ProtocolV1.PhoneGraceMs);
+        if (_phoneGraceDuration < TimeSpan.Zero)
+            throw new ArgumentOutOfRangeException(nameof(phoneGraceDuration));
         _pairedStore = new JsonPairedDeviceStore(Path.Combine(dataDirectory, "paired.json"));
         _pairing = new PairingResponder(identity.Id, identity.Name, identity.Fingerprint, _pairedStore);
         _transport = new TlsWebSocketServer(identity.Certificate, port);
@@ -211,7 +232,16 @@ public sealed class NativePeerHost : IAsyncDisposable
         string? busyName = null;
         lock (_sessionSync)
         {
-            if (_active is not null && _active.PrimaryConnection.Id != connection.Id)
+            if (os == ProtocolV1.PeerOs.Android)
+            {
+                ClearPhoneGraceLocked();
+            }
+            else if (IsPhoneGraceActiveLocked(DateTimeOffset.UtcNow))
+            {
+                busyName = _phoneGraceDeviceName ?? "phone";
+            }
+
+            if (busyName is null && _active is not null && _active.PrimaryConnection.Id != connection.Id)
             {
                 var sameDevice = string.Equals(_active.Device.Id, deviceId, StringComparison.Ordinal);
                 var takeover = sameDevice || os == ProtocolV1.PeerOs.Android || GetBool(message, "takeover");
@@ -514,9 +544,42 @@ public sealed class NativePeerHost : IAsyncDisposable
         }
 
         if (endedSession is not null)
-            _pairedStore.Upsert(endedSession.Device with { LastSeen = DateTimeOffset.UtcNow });
+        {
+            var now = DateTimeOffset.UtcNow;
+            _pairedStore.Upsert(endedSession.Device with { LastSeen = now });
+
+            if (!_disposed && !endedSession.Released &&
+                endedSession.Os == ProtocolV1.PeerOs.Android &&
+                _phoneGraceDuration > TimeSpan.Zero)
+            {
+                lock (_sessionSync)
+                {
+                    _phoneGraceDeviceId = endedSession.Device.Id;
+                    _phoneGraceDeviceName = endedSession.Device.Name;
+                    _phoneGraceUntil = now + _phoneGraceDuration;
+                }
+            }
+        }
 
         StateChanged?.Invoke();
+    }
+
+    private bool IsPhoneGraceActiveLocked(DateTimeOffset now)
+    {
+        if (_phoneGraceUntil <= now)
+        {
+            ClearPhoneGraceLocked();
+            return false;
+        }
+
+        return _phoneGraceDeviceId is not null;
+    }
+
+    private void ClearPhoneGraceLocked()
+    {
+        _phoneGraceUntil = DateTimeOffset.MinValue;
+        _phoneGraceDeviceId = null;
+        _phoneGraceDeviceName = null;
     }
 
     private static Task SendErrorAsync(TlsWebSocketConnection connection, string code, string message,

@@ -18,6 +18,7 @@ public static class ProtocolV1
     public const int SessionTimeoutMs = 8000;
     public const int HelloTimeoutMs = 4000;
     public const int PairTimeoutMs = 60000;
+    public const int PhoneGraceMs = 30000;
     public const int UnauthTimeoutMs = 70000;
     public const int MaxPayloadBytes = 16 * 1024 * 1024;
     public const string SasLabel = "macshare-sas-v1";
