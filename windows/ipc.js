@@ -10,7 +10,7 @@ const { apply } = require('./settings');
 // ctx: link, discovery, screen, clip, kvm, terminal, fileDrop, smb, apps, phone, phoneViews, connectPhoneDev(d), settings, save(), push(), buildState(),
 //      checkFirewall(), fixFirewall(), setStartup(on)
 function setupIpc(ctx) {
-  const { link, discovery, screen, clip, kvm, sshd, fileDrop, smb, apps, sound, pcScreen, pcApps, peerApps, vdd, notifs, fileClip, wake, settings } = ctx;
+  const { link, discovery, screen, clip, kvm, fileDrop, smb, apps, sound, pcScreen, pcApps, peerApps, vdd, notifs, fileClip, wake, settings } = ctx;
 
   const handle = (name, fn) => ipcMain.handle(name, (_e, ...args) => fn(...args));
   const change = (section, partial, after) => {
@@ -75,7 +75,7 @@ function setupIpc(ctx) {
   handle('copyText', (text) => typeof text === 'string' && text.length < 1000 && clipboard.writeText(text));
   handle('confirmCode', () => link.confirmCode());
   handle('cancelPair', () => { ctx.cancelPhoneInvite(); link.cancelPair(); });
-  handle('forget', () => { link.forget(); sshd.revokeAll(); }); // forgotten: it may not log in any more
+  handle('forget', () => { link.forget(); const service = ctx.getSshd(); if (service) service.revokeAll(); }); // forgotten: it may not log in any more
   // Disconnect (either side of the session); Connect again / Take over the computer we're a guest of.
   handle('disconnect', () => link.disconnect());
   handle('connectAgain', () => link.connect(true));
@@ -218,9 +218,13 @@ function setupIpc(ctx) {
   handle('setTerminal', (partial) => {
     const p = partial && typeof partial === 'object' ? { enabled: partial.enabled, allowMac: partial.allowMac } : {};
     Object.keys(p).forEach((k) => p[k] === undefined && delete p[k]);
-    change('terminal', p, () => { if (ctx.terminal) ctx.terminal.apply(); else ctx.loadTerminal(); sshd.apply(); });
+    change('terminal', p, () => {
+      if (ctx.terminal) ctx.terminal.apply(); else ctx.loadTerminal();
+      const service = ctx.getSshd(settings.terminal.allowMac || !!settings.terminal.installedKey);
+      if (service) service.apply();
+    });
   });
-  handle('setupSshd', () => sshd.setup());
+  handle('setupSshd', () => ctx.getSshd(true).setup());
   handle('openTerminal', () => ctx.terminal && ctx.terminal.open());
   handle('setFiles', (partial) => {
     // shareOn/shareFolder only change through share()/unshare()
@@ -383,7 +387,11 @@ function setupIpc(ctx) {
     pcScreen: () => pcScreen.apply(), // Resolution (pair.sync 'res', with a phone): a new session at that size
     rezume: () => (ctx.rezume ? ctx.rezume.apply() : ctx.loadReZume()),
     remote: () => (ctx.phoneRemote ? ctx.phoneRemote.setAllow(settings.remote.allow) : ctx.loadRemote()),
-    terminal: () => { if (ctx.terminal) ctx.terminal.apply(); else ctx.loadTerminal(); sshd.apply(); },
+    terminal: () => {
+      if (ctx.terminal) ctx.terminal.apply(); else ctx.loadTerminal();
+      const service = ctx.getSshd(settings.terminal.allowMac || !!settings.terminal.installedKey);
+      if (service) service.apply();
+    },
     files: () => { smb.applyMount(); kvm.applyConfig(); fileClip.apply(); },
   };
   return { set: (section, partial) => change(section, partial, AFTER[section]) };
