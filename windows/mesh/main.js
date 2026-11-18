@@ -1279,7 +1279,7 @@ function statusLine(s) {
 
 // ---- windows and tray ----
 
-function createMainWindow(tab) {
+function createMainWindow(tab, reveal) {
   const b = settings.windows.main || {};
   mainWin = new BrowserWindow({
     width: b.width || 900,
@@ -1306,7 +1306,7 @@ function createMainWindow(tab) {
     if (shown || win.isDestroyed()) return;
     shown = true;
     if (tab) win.webContents.send('go', tab);
-    win.show();
+    if (!startHidden || reveal) win.show();
     win.focus();
   };
   win.once('ready-to-show', show);
@@ -1331,13 +1331,13 @@ function saveBounds() {
 
 // Show the window on one tab (tray items, popups).
 function goTab(tab) {
-  if (!mainWin || mainWin.isDestroyed()) return void createMainWindow(tab);
+  if (!mainWin || mainWin.isDestroyed()) return void createMainWindow(tab, true);
   showMain();
   mainWin.webContents.send('go', tab);
 }
 
 function showMain() {
-  if (!mainWin || mainWin.isDestroyed()) return void createMainWindow();
+  if (!mainWin || mainWin.isDestroyed()) return void createMainWindow(null, true);
   if (mainWin.isMinimized()) mainWin.restore();
   mainWin.show();
   mainWin.focus();
