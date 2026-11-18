@@ -23,10 +23,11 @@ public sealed class PairingResponderTests
 
         responder.Begin("socket-1", RemoteAddress, Request());
         Assert.Equal(ProtocolV1.Message.PairNonce, messages.Single().Type);
-        Assert.Equal(32, Assert.IsType<string>(messages[0].Fields["nonce"]).Length);
+        var hostNonce = Assert.IsType<string>(messages[0].Fields["nonce"]);
+        Assert.Equal(32, hostNonce.Length);
 
         responder.Reveal("socket-1", WindowsNonce);
-        Assert.Equal("187236", prompt?.ShortAuthenticationCode);
+        Assert.Equal(ProtocolCrypto.SasCode(Fingerprint, WindowsNonce, hostNonce), prompt?.ShortAuthenticationCode);
         Assert.False(prompt?.IsConfirmed);
         Assert.False(prompt?.IsAllowed);
 
