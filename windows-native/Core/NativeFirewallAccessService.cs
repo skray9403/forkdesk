@@ -135,7 +135,7 @@ public sealed class NativeFirewallAccessService
                 if ((profiles & activeProfiles) != activeProfiles)
                     continue;
 
-                var localPorts = Convert.ToString(rule.LocalPorts, CultureInfo.InvariantCulture) ?? string.Empty;
+                string localPorts = Convert.ToString((object?)rule.LocalPorts, CultureInfo.InvariantCulture) ?? string.Empty;
                 if (localPorts.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
                     .Any(value => value == port.ToString(CultureInfo.InvariantCulture)))
                     return true;
