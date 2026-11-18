@@ -6,10 +6,10 @@ This is the native Windows replacement target, built with WinUI 3 and C#.
 
 The application UI is WinUI/XAML. It does not use Electron, Chromium, HTML, CSS,
 JavaScript or a WebView2 control to render its interface, and it does not navigate
-to web content. The Windows App SDK WinUI package has a transitive WebView2 SDK
-dependency, so its compile-time package may remain in the dependency graph. This
-project excludes unused WebView2 runtime assets from its publish output. A
-zero-WebView2 NuGet graph is not claimed.
+to web content. The Windows App SDK brings WebView2 API assemblies transitively.
+The app does not instantiate a WebView2 control, include the WebView2 native loader,
+or bundle the Edge WebView2 browser runtime. CI checks the native loader and browser
+executable boundaries; transitive API assemblies do not mean the app uses a web renderer.
 
 ## Windows product scope
 
@@ -33,23 +33,25 @@ Visual Studio Build Tools with MSBuild.
 From the project directory:
 
     cd windows-native
-    dotnet restore TwinDesk.Native.csproj -r win-x64
-    dotnet build TwinDesk.Native.csproj -c Release --no-restore -r win-x64 -p:Platform=x64 --self-contained false
+    dotnet restore TwinDesk.Native.csproj -r win-x64 -p:SelfContained=true
+    dotnet publish TwinDesk.Native.csproj -c Release --no-restore -r win-x64 -p:Platform=x64 --self-contained true
 
 For Windows on ARM:
 
-    dotnet restore TwinDesk.Native.csproj -r win-arm64
-    dotnet build TwinDesk.Native.csproj -c Release --no-restore -r win-arm64 -p:Platform=ARM64 --self-contained false
+    dotnet restore TwinDesk.Native.csproj -r win-arm64 -p:SelfContained=true
+    dotnet publish TwinDesk.Native.csproj -c Release --no-restore -r win-arm64 -p:Platform=ARM64 --self-contained true
 
 The project pins the .NET 10 SDK line through global.json. It is unpackaged and
-framework-dependent. WindowsPackageType=None enables the Windows App SDK bootstrap
-auto-initializer. The distributable installer must ensure the matching Windows App
-SDK and .NET 10 runtimes are present.
+self-contained. WindowsAppSDKSelfContained=true bundles the Windows App SDK runtime,
+and publish --self-contained true bundles the .NET runtime. The resulting ZIP can
+be extracted and launched without separately installing the .NET 10 Desktop Runtime
+or Windows App SDK runtime. The trade-off is a larger download; Windows App SDK
+servicing updates must be incorporated by rebuilding the app.
 
 ## Current native functionality
 
 - WinUI 3 lifecycle and native navigation shell.
-- Single-instance process guard; a second launch activates the existing window.
+- Single-instance process guard with abandoned-mutex recovery; a second launch activates the existing window.
 - Optional per-user Windows sign-in startup registration.
 - Local append-only diagnostics for app lifecycle and native service failures.
 - Windows/Android protocol-v1 UDP discovery, TLS WebSocket pairing and authenticated sessions.
@@ -67,11 +69,12 @@ until those services have native implementations and pass parity tests.
 
 ## Build artifacts
 
-The Build Native Windows workflow publishes framework-dependent ZIPs for both
-Windows x64 and Windows ARM64. Download the matching TwinDesk-Windows-x64 or
-TwinDesk-Windows-ARM64 artifact from a successful GitHub Actions run. Extract it
-and launch TwinDesk.exe.
+The **Build Native Windows** workflow publishes self-contained ZIPs for both
+Windows x64 and Windows ARM64. Download the matching `TwinDesk-Windows-x64` or
+`TwinDesk-Windows-ARM64` artifact from a successful GitHub Actions run. Extract it
+and launch `TwinDesk.exe`.
 
-The target machine must have the .NET 10 Desktop Runtime and the matching Windows
-App SDK runtime installed. This is a portable publish output, not an installer:
-it does not register an uninstall entry, create shortcuts, or install prerequisites.
+The ZIP is self-contained and does not require the .NET 10 Desktop Runtime or the
+matching Windows App SDK runtime to be installed separately. This is a portable
+publish output, not an installer: it does not register an uninstall entry, create
+shortcuts, or install prerequisites beyond the files bundled in the ZIP.

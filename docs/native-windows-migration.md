@@ -4,10 +4,10 @@
 
 Replace the Windows Electron application with a fully native WinUI 3/C# application.
 The Windows product must not embed or launch an Electron, Chromium or HTML renderer,
-and it must not instantiate or use a WebView2 control. The Windows App SDK WinUI
-package depends transitively on the WebView2 SDK package; runtime assets are excluded
-from this app's published output when they are not needed. A zero-WebView2 package
-graph remains an explicit constraint rather than an unverified claim.
+and it must not instantiate or use a WebView2 control. The Windows App SDK brings
+WebView2 API assemblies transitively. The app does not instantiate a WebView2 control,
+include the native WebView2 loader, or bundle an Edge WebView2 browser runtime. CI
+checks those native runtime boundaries; it does not claim a zero-WebView2 NuGet graph.
 
 ## Windows product scope
 
@@ -38,9 +38,9 @@ tests and other desktop clients remain separate deliverables.
 1. Foundation: buildable WinUI application target, native navigation and page shells,
    Windows/Android peer policy, and UI-to-core service boundary. Keep the current
    installer untouched.
-2. Core process: single-instance activation, durable diagnostics, and optional
-   per-user sign-in launch are implemented. Tray lifecycle, notifications and
-   crash-safe shutdown still need Windows runtime validation.
+2. Core process: single-instance activation with abandoned-mutex recovery, durable
+   diagnostics, optional per-user sign-in launch and shutdown are implemented.
+   Tray lifecycle and notifications still need native implementation and runtime validation.
 3. Android/Windows connectivity: native discovery, pairing approval, identity
    storage, authentication, TLS/session management and Android compatibility tests.
    USB and wireless-debugging paths remain pending.
@@ -68,17 +68,14 @@ tests and other desktop clients remain separate deliverables.
 - Keep the Electron installer as a temporary rollback path until feature parity and
   the upgrade path pass acceptance testing.
 - Do not instantiate the WinUI WebView2 control or start a browser-rendering process.
-  Verify the published dependency graph so unused WebView2 runtime assets stay out
-  of the output.
+  Verify that neither the native WebView2 loader nor Edge browser runtime is bundled.
 
 ## Deployment
 
-The initial target is unpackaged and framework-dependent to avoid copying a private
-Windows App SDK runtime into every installation. The installer must ensure the
-matching Windows App SDK and .NET 10 runtimes are present. Microsoft's deployment
-documentation identifies framework-dependent deployment as smaller and more
-serviceable; self-contained deployment adds runtime files and disk usage.
-Re-evaluate after measuring installer output and actual app memory.
+The initial target is unpackaged and self-contained so x64/ARM64 ZIPs can run
+without a separate .NET Desktop Runtime or Windows App SDK runtime installation.
+This increases download size and means Windows App SDK servicing requires a new
+app build. Re-evaluate the deployment model when a signed installer is introduced.
 
 ## Acceptance criteria for replacing Electron
 

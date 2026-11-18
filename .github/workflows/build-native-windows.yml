@@ -50,17 +50,31 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: Restore x64
-        run: dotnet restore TwinDesk.Native.csproj -r win-x64
+        run: dotnet restore TwinDesk.Native.csproj -r win-x64 -p:SelfContained=true
       - name: Publish x64
-        run: dotnet publish TwinDesk.Native.csproj --configuration Release --no-restore -r win-x64 -p:Platform=x64 --self-contained false -o artifacts/win-x64
+        run: dotnet publish TwinDesk.Native.csproj --configuration Release --no-restore -r win-x64 -p:Platform=x64 --self-contained true -o artifacts/win-x64
+      - name: Verify x64 publish output
+        shell: pwsh
+        run: |
+          if (-not (Test-Path artifacts/win-x64/TwinDesk.exe)) { throw 'TwinDesk.exe missing from x64 publish output.' }
+          if (-not (Test-Path artifacts/win-x64/coreclr.dll)) { throw '.NET runtime missing from x64 self-contained output.' }
+          if (Test-Path artifacts/win-x64/WebView2Loader.dll) { throw 'Unexpected WebView2 native loader in x64 publish output.' }
+          if (Test-Path artifacts/win-x64/msedgewebview2.exe) { throw 'Unexpected embedded Edge WebView2 runtime in x64 publish output.' }
       - name: Package x64
         shell: pwsh
         run: Compress-Archive -Path artifacts/win-x64/* -DestinationPath artifacts/TwinDesk-windows-x64.zip -Force
 
       - name: Restore ARM64
-        run: dotnet restore TwinDesk.Native.csproj -r win-arm64
+        run: dotnet restore TwinDesk.Native.csproj -r win-arm64 -p:SelfContained=true
       - name: Publish ARM64
-        run: dotnet publish TwinDesk.Native.csproj --configuration Release --no-restore -r win-arm64 -p:Platform=ARM64 --self-contained false -o artifacts/win-arm64
+        run: dotnet publish TwinDesk.Native.csproj --configuration Release --no-restore -r win-arm64 -p:Platform=ARM64 --self-contained true -o artifacts/win-arm64
+      - name: Verify ARM64 publish output
+        shell: pwsh
+        run: |
+          if (-not (Test-Path artifacts/win-arm64/TwinDesk.exe)) { throw 'TwinDesk.exe missing from ARM64 publish output.' }
+          if (-not (Test-Path artifacts/win-arm64/coreclr.dll)) { throw '.NET runtime missing from ARM64 self-contained output.' }
+          if (Test-Path artifacts/win-arm64/WebView2Loader.dll) { throw 'Unexpected WebView2 native loader in ARM64 publish output.' }
+          if (Test-Path artifacts/win-arm64/msedgewebview2.exe) { throw 'Unexpected embedded Edge WebView2 runtime in ARM64 publish output.' }
       - name: Package ARM64
         shell: pwsh
         run: Compress-Archive -Path artifacts/win-arm64/* -DestinationPath artifacts/TwinDesk-windows-arm64.zip -Force

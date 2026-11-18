@@ -30,10 +30,13 @@ public partial class App : Application
 
         try
         {
-            _instanceMutex = new Mutex(true, InstanceMutexName, out _ownsInstanceMutex);
+            _instanceMutex = new Mutex(initiallyOwned: false, name: InstanceMutexName);
+            _ownsInstanceMutex = _instanceMutex.WaitOne(millisecondsTimeout: 0);
         }
         catch (AbandonedMutexException)
         {
+            // The previous primary process exited while owning the mutex.
+            // WaitOne grants ownership to this process when it reports abandonment.
             _ownsInstanceMutex = true;
         }
 
@@ -85,7 +88,11 @@ public partial class App : Application
             }, new WindowsClipboardAdapter());
 
             _window = new MainWindow(_core);
-            _window.Closed += async (_, _) => await ShutdownAsync();
+            _window.Closed += async (_, _) =>
+            {
+                await ShutdownAsync();
+                Exit();
+            };
             _window.Activate();
 
             await _core.StartAsync();
