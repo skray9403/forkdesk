@@ -41,3 +41,16 @@ The project pins the .NET 10 SDK line through global.json. It is unpackaged and 
 - No Electron fallback or embedded web renderer.
 
 Pairing, discovery, file transfer, clipboard, screen, remote input, audio, notifications, camera, tray lifecycle, updates and installer integration are not yet ported. The existing Windows installer remains the supported production build until those services have native implementations and pass parity tests.
+
+
+## CI build artifacts
+
+The **Build Native Windows** workflow publishes framework-dependent ZIPs for both
+Windows x64 and Windows ARM64. Open the successful workflow run in GitHub Actions
+and download the matching `TwinDesk-Windows-x64` or `TwinDesk-Windows-ARM64`
+artifact. Extract the ZIP to a folder and launch `TwinDesk.exe`.
+
+The target machine must have the .NET 10 Desktop Runtime and the matching Windows
+App SDK runtime installed. This is a portable publish output, not an installer:
+it does not register an uninstall entry, create shortcuts, configure auto-start,
+or install prerequisites. Those are separate deployment milestones.
