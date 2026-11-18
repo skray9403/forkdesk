@@ -56,5 +56,6 @@ public static class ProtocolV1
         public const string Replaced = "replaced";
         public const string Released = "released";
         public const string Asleep = "asleep";
+        public const string BadMessage = "bad_message";
     }
 }
