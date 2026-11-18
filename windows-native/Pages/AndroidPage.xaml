@@ -10,15 +10,15 @@
         </StackPanel>
         <InfoBar IsOpen="True" IsClosable="False" Severity="Warning"
             Title="Native core not connected yet"
-            Message="Pairing will be enabled after discovery, identity, authentication and session handling have been ported. This avoids showing a button that cannot work."/>
+            Message="Discovery is now native. Pairing remains disabled until identity, TLS authentication and the protocol-v1 pairing exchange are ported."/>
         <Border Padding="24" CornerRadius="12"
             Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
             BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
           <StackPanel Spacing="12">
             <TextBlock Text="Pair an Android phone" FontSize="20" FontWeight="SemiBold"/>
-            <TextBlock Text="The Windows client will retain Android support, including local-network discovery and supported USB / wireless-debugging paths." TextWrapping="Wrap"/>
+            <TextBlock Text="The native discovery service listens for compatible Android and Windows peers using the existing protocol-v1 UDP beacon format. USB and wireless-debugging pairing paths are still pending." TextWrapping="Wrap"/>
             <Button Content="Pair Android device" IsEnabled="False" HorizontalAlignment="Left"/>
-            <TextBlock Text="Pairing activates when the native transport milestone is complete." FontSize="12" Foreground="{ThemeResource TextFillColorTertiaryBrush}"/>
+            <TextBlock Text="Discovery is active; pairing awaits the authenticated transport implementation." FontSize="12" Foreground="{ThemeResource TextFillColorTertiaryBrush}"/>
           </StackPanel>
         </Border>
       </StackPanel>
