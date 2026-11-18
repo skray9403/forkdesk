@@ -10,6 +10,10 @@ There is no Electron, Chromium, WebView2, HTML, CSS or JavaScript UI dependency 
 
 The native Windows edition targets Windows PC peers and Android phone peers. macOS, Linux and iOS peer implementations are intentionally excluded from this Windows target. The Android app and other desktop clients remain separate repository deliverables.
 
+## Architecture
+
+The protocol, discovery and session services live in `Core/TwinDesk.Native.Core.csproj`, a plain `.NET 10` library with no WinUI dependency. The WinUI application references that library. The test project references the core library directly, so protocol tests do not need to load the Windows UI framework.
+
 ## Build
 
 Requirements: Windows 10/11 build 19041 or later, .NET 10 SDK, Windows SDK and Visual Studio Build Tools with MSBuild.
@@ -32,7 +36,8 @@ The project pins the .NET 10 SDK line through global.json. It is unpackaged and 
 - Native WinUI 3 lifecycle and navigation shell.
 - Native overview, Android, feature and settings surfaces.
 - Explicit peer policy: Android and Windows only.
-- UI-facing INativeCoreClient contract for the future native session engine.
+- UI-facing INativeCoreClient contract for the native session engine.
+- A separate platform-independent native core library with protocol-v1 discovery.
 - No Electron fallback or embedded web renderer.
 
 Pairing, discovery, file transfer, clipboard, screen, remote input, audio, notifications, camera, tray lifecycle, updates and installer integration are not yet ported. The existing Windows installer remains the supported production build until those services have native implementations and pass parity tests.
