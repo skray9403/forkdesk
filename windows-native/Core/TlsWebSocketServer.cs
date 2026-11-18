@@ -240,7 +240,13 @@ public sealed class TlsWebSocketServer : IAsyncDisposable
                         unauthenticatedTimeout.Token).ConfigureAwait(false);
 
                     if (result.MessageType == WebSocketMessageType.Close)
+                    {
+                        await connection.CloseAsync(
+                            result.CloseStatus ?? WebSocketCloseStatus.NormalClosure,
+                            result.CloseStatusDescription ?? "Close acknowledged",
+                            cancellationToken).ConfigureAwait(false);
                         return;
+                    }
                     if (result.MessageType != WebSocketMessageType.Text)
                     {
                         await connection.CloseAsync(WebSocketCloseStatus.InvalidMessageType,

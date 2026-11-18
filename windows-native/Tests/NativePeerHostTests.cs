@@ -106,9 +106,9 @@ public sealed class NativePeerHostTests
                                t.GetString() == ProtocolV1.Message.Pong);
             Assert.Equal(654321L, resumedPong.RootElement.GetProperty("ts").GetInt64());
 
-            // Simulate the new Wi-Fi transport disappearing abruptly. The server must
+            // Simulate the new Wi-Fi transport closing normally. The server must
             // promote the original connection instead of ending the authenticated session.
-            resumedClient.Abort();
+            await resumedClient.CloseAsync(WebSocketCloseStatus.NormalClosure, "test fallback", CancellationToken.None);
             await WaitUntilAsync(() => host.ConnectedDevice?.Id == phoneId);
             await SendAsync(client, new { t = ProtocolV1.Message.Ping, ts = 123456L });
             using var pong = await ReceiveUntilAsync(client,
