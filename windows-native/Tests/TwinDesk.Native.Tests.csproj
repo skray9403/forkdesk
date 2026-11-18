@@ -15,6 +15,6 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="../TwinDesk.Native.csproj" />
+    <ProjectReference Include="../Core/TwinDesk.Native.Core.csproj" />
   </ItemGroup>
 </Project>
