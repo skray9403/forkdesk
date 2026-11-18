@@ -13,9 +13,15 @@ import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
@@ -576,16 +582,40 @@ fun App(core: Core, resumed: Int) {
                                 }
                             }
                         }
-                        if (NavOrder.searchButton(core.store)) { // Arrange › Search button
-                            Spacer(Modifier.width(10.dp))
-                            FloatingActionButton(
-                                onClick = { Search.open.value = true },
-                                modifier = Modifier.size(56.dp),
-                                shape = CircleShape,
-                                containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                                contentColor = MaterialTheme.colorScheme.onSurface,
-                            ) {
-                                Icon(Ico.search, contentDescription = tr("Search"))
+                        AnimatedVisibility(
+                            visible = NavOrder.searchButton(core.store),
+                            enter =
+                                expandHorizontally(
+                                    expandFrom = Alignment.Start,
+                                    animationSpec = spring(dampingRatio = 0.86f, stiffness = 560f),
+                                ) +
+                                    fadeIn(animationSpec = tween(180)) +
+                                    scaleIn(
+                                        initialScale = 0.78f,
+                                        animationSpec = spring(dampingRatio = 0.9f, stiffness = 620f),
+                                    ),
+                            exit =
+                                shrinkHorizontally(
+                                    shrinkTowards = Alignment.Start,
+                                    animationSpec = spring(dampingRatio = 0.86f, stiffness = 560f),
+                                ) +
+                                    fadeOut(animationSpec = tween(140)) +
+                                    scaleOut(
+                                        targetScale = 0.78f,
+                                        animationSpec = spring(dampingRatio = 0.9f, stiffness = 620f),
+                                    ),
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Spacer(Modifier.width(10.dp))
+                                FloatingActionButton(
+                                    onClick = { Search.open.value = true },
+                                    modifier = Modifier.size(56.dp),
+                                    shape = CircleShape,
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                                    contentColor = MaterialTheme.colorScheme.onSurface,
+                                ) {
+                                    Icon(Ico.search, contentDescription = tr("Search"))
+                                }
                             }
                         }
                     }
