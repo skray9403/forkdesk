@@ -19,7 +19,7 @@
             <StackPanel Spacing="10">
               <TextBlock Text="Android device" FontSize="18" FontWeight="SemiBold"/>
               <TextBlock Text="Not connected" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-              <TextBlock Text="Native pairing and discovery are the next integration milestone." TextWrapping="Wrap"/>
+              <TextBlock Text="Native UDP discovery is active. Pairing and authenticated sessions are the next integration milestone." TextWrapping="Wrap"/>
               <Button Content="Open Android device" HorizontalAlignment="Left" Click="OpenAndroid_Click"/>
             </StackPanel>
           </Border>
