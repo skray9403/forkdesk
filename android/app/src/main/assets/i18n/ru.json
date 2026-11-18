@@ -1240,5 +1240,12 @@
   "{other} is {where} {me}.": "{other} находится {where} относительно {me}.",
   "Bluetooth fallback": "Резервное подключение Bluetooth",
   "After Wi-Fi or USB disconnects, searches nearby for 5 minutes. A Bluetooth session stays connected until Wi-Fi or USB returns.": "После отключения Wi‑Fi или USB поиск устройств поблизости продолжается 5 минут. Установленное Bluetooth-соединение сохраняется, пока Wi‑Fi или USB не подключится снова.",
-  "Dismiss quick actions": "Закрыть быстрые действия"
+  "Dismiss quick actions": "Закрыть быстрые действия",
+  "Arrange navigation": "Упорядочить навигацию",
+  "Collapsed": "Свернуто",
+  "Enter the computer’s IP address on your network.": "Введите IP-адрес компьютера в вашей сети.",
+  "Expanded": "Развернуто",
+  "Quick actions": "Быстрые действия",
+  "Refresh nearby": "Обновить устройства поблизости",
+  "Scan QR code": "Сканировать QR-код"
 }
