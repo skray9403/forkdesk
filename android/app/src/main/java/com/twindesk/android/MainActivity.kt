@@ -474,25 +474,27 @@ fun App(core: Core, resumed: Int) {
                             val enteringDetail = initialState.first && !targetState.first && targetState.second !in BOTTOM
                             val returningToMore = !initialState.first && targetState.first && initialState.second !in BOTTOM
                             when {
+                                // Push detail destinations from the edge, with a restrained
+                                // parallax of the source page, using the active M3 motion scheme.
                                 enteringDetail -> (
                                     slideInHorizontally(
-                                        initialOffsetX = { it / 8 },
+                                        initialOffsetX = { it },
                                         animationSpec = pageSpatialSpec,
                                     ) + fadeIn(animationSpec = pageEffectsSpec)
                                 ) togetherWith (
                                     slideOutHorizontally(
-                                        targetOffsetX = { -it / 8 },
+                                        targetOffsetX = { -it / 6 },
                                         animationSpec = pageSpatialSpec,
                                     ) + fadeOut(animationSpec = pageEffectsSpec)
                                 )
                                 returningToMore -> (
                                     slideInHorizontally(
-                                        initialOffsetX = { -it / 8 },
+                                        initialOffsetX = { -it / 6 },
                                         animationSpec = pageSpatialSpec,
                                     ) + fadeIn(animationSpec = pageEffectsSpec)
                                 ) togetherWith (
                                     slideOutHorizontally(
-                                        targetOffsetX = { it / 8 },
+                                        targetOffsetX = { it },
                                         animationSpec = pageSpatialSpec,
                                     ) + fadeOut(animationSpec = pageEffectsSpec)
                                 )
@@ -590,7 +592,7 @@ fun App(core: Core, resumed: Int) {
                         onCheckedChange = { fabMenuExpanded = it },
                     ) {
                         val icon by remember {
-                            derivedStateOf { if (checkedProgress > 0.5f) Ico.close else Ico.plus }
+                            derivedStateOf { if (checkedProgress > 0.5f) Ico.close else Ico.camera }
                         }
                         Icon(
                             icon,
@@ -752,38 +754,79 @@ private fun MoreList(core: Core, v: Int, BOTTOM: List<Tab>, modifier: Modifier, 
     } else {
         entries.groupBy { if (it.group == "bottom") "System" else it.group }.toList()
     }
-    Column(modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp)) {
+    val scheme = MaterialTheme.colorScheme
+
+    // Keep search fixed while the destinations scroll, matching the Settings hierarchy.
+    Column(
+        modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 16.dp),
+    ) {
         SearchField()
-        Devices(core, v) { go(if (core.host != null || core.peer.connected) Tab.Overview else Tab.Connection) }
-        sections.forEach { (section, tabs) ->
-            if (section.isNotEmpty()) {
-                Text(
-                    tr(section),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 8.dp),
-                )
+        Column(
+            Modifier.weight(1f).fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(bottom = 20.dp),
+        ) {
+            Devices(core, v) {
+                go(if (core.host != null || core.peer.connected) Tab.Overview else Tab.Connection)
             }
-            MacCard {
-                tabs.forEachIndexed { index, tab ->
-                    if (index > 0) HorizontalDivider(Modifier.padding(start = 56.dp))
-                    ListItem(
-                        content = { Text(tr(tab.title)) },
-                        leadingContent = { Icon(tab.icon, contentDescription = null) },
-                        supportingContent = if (wifiOnly(core, tab)) {
-                            { Text(tr("Wi-Fi Direct"), style = MaterialTheme.typography.bodySmall) }
-                        } else null,
-                        trailingContent = {
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                if (isOn(core, tab)) Badge(containerColor = MaterialTheme.colorScheme.tertiary)
-                                Icon(Ico.right, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                        },
-                        modifier = Modifier.clickable { go(tab) },
-                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+            sections.forEachIndexed { sectionIndex, (section, tabs) ->
+                if (section.isNotEmpty()) {
+                    Text(
+                        tr(section),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = scheme.onSurface,
+                        modifier = Modifier.padding(
+                            start = 16.dp,
+                            top = if (sectionIndex == 0) 8.dp else 20.dp,
+                            bottom = 8.dp,
+                        ),
                     )
+                } else if (sectionIndex > 0) {
+                    Spacer(Modifier.height(18.dp))
+                }
+                MacCard {
+                    tabs.forEachIndexed { index, tab ->
+                        if (index > 0) HorizontalDivider(Modifier.padding(start = 68.dp))
+                        val (iconContainer, iconTint) = when (tab.group) {
+                            "Connect" -> scheme.primaryContainer to scheme.onPrimaryContainer
+                            "Control" -> scheme.secondaryContainer to scheme.onSecondaryContainer
+                            "Share" -> scheme.tertiaryContainer to scheme.onTertiaryContainer
+                            "More" -> scheme.secondaryContainer to scheme.onSecondaryContainer
+                            else -> scheme.surfaceContainerHigh to scheme.onSurfaceVariant
+                        }
+                        ListItem(
+                            content = { Text(tr(tab.title), style = MaterialTheme.typography.bodyLarge) },
+                            leadingContent = {
+                                Surface(shape = CircleShape, color = iconContainer) {
+                                    Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            tab.icon,
+                                            contentDescription = null,
+                                            tint = iconTint,
+                                            modifier = Modifier.size(21.dp),
+                                        )
+                                    }
+                                }
+                            },
+                            supportingContent = if (wifiOnly(core, tab)) {
+                                { Text(tr("Wi-Fi Direct"), style = MaterialTheme.typography.bodyMedium) }
+                            } else null,
+                            trailingContent = {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    if (isOn(core, tab)) Badge(containerColor = scheme.tertiary)
+                                    Icon(Ico.right, contentDescription = null, tint = scheme.onSurfaceVariant)
+                                }
+                            },
+                            modifier = Modifier.clickable { go(tab) },
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                        )
+                    }
                 }
             }
+            Spacer(Modifier.height(8.dp))
         }
     }
 }
@@ -791,7 +834,7 @@ private fun MoreList(core: Core, v: Int, BOTTOM: List<Tab>, modifier: Modifier, 
 @Composable
 private fun Page(core: Core, v: Int, resumed: Int, tab: Tab, modifier: Modifier) {
     @Suppress("UNUSED_EXPRESSION") v // redraw on every Core change (Compose skips unread parameters)
-    Column(modifier.fillMaxHeight().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 20.dp)) {
+    Column(modifier.fillMaxHeight().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp)) {
         Column(Modifier.widthIn(max = 820.dp)) {
             if (peerMode(core) && tab != Tab.Connection && tab != Tab.General && tab != Tab.About) PeerPage(core, v, tab.name)
             else when (tab) {
