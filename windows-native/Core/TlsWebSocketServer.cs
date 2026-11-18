@@ -37,7 +37,7 @@ public sealed class TlsWebSocketServer : IAsyncDisposable
     public event Action<TlsWebSocketConnection>? ConnectionClosed;
 
     public bool IsListening => _listener is not null;
-    public int Port => _port;
+    public int Port => (_listener?.LocalEndpoint as IPEndPoint)?.Port ?? _port;
     public IReadOnlyCollection<TlsWebSocketConnection> Connections => _connections.Values.ToArray();
 
     public TlsWebSocketServer(X509Certificate2 certificate, int port = ProtocolV1.Port)
@@ -45,7 +45,7 @@ public sealed class TlsWebSocketServer : IAsyncDisposable
         ArgumentNullException.ThrowIfNull(certificate);
         if (!certificate.HasPrivateKey)
             throw new ArgumentException("The TLS certificate must include its private key.", nameof(certificate));
-        if (port is < 1 or > 65535)
+        if (port is < 0 or > 65535)
             throw new ArgumentOutOfRangeException(nameof(port));
 
         _certificate = certificate;

@@ -27,6 +27,7 @@ public sealed class NativePeerHost : IAsyncDisposable
     public event Func<PairedDevice, string, JsonElement, Task>? AuthenticatedMessageReceived;
 
     public bool IsListening => _transport.IsListening;
+    public int Port => _transport.Port;
     public PairingPrompt? PendingPairing => _pairing.Pending;
     public IReadOnlyList<PairedDevice> PairedDevices => _pairedStore.ReadAll();
     public PairedDevice? ConnectedDevice
@@ -183,22 +184,29 @@ public sealed class NativePeerHost : IAsyncDisposable
 
         var session = new PeerSession(connection, updated, os);
         PeerSession? replaced = null;
+        string? busyName = null;
         lock (_sessionSync)
         {
             if (_active is not null && _active.Connection.Id != connection.Id)
             {
                 var takeover = os == ProtocolV1.PeerOs.Android || GetBool(message, "takeover");
                 if (!takeover)
-                {
-                    _ = SendErrorAsync(connection, ProtocolV1.Error.Busy,
-                        $"In use by {_active.Device.Name}");
-                    return;
-                }
-                replaced = _active;
+                    busyName = _active.Device.Name;
+                else
+                    replaced = _active;
             }
 
-            _sessions[connection.Id] = session;
-            _active = session;
+            if (busyName is null)
+            {
+                _sessions[connection.Id] = session;
+                _active = session;
+            }
+        }
+
+        if (busyName is not null)
+        {
+            await SendErrorAsync(connection, ProtocolV1.Error.Busy, $"In use by {busyName}").ConfigureAwait(false);
+            return;
         }
 
         if (replaced is not null)
@@ -315,7 +323,12 @@ public sealed class NativePeerHost : IAsyncDisposable
     private void HandleConnectionClosed(TlsWebSocketConnection connection)
     {
         _pairing.ConnectionClosed(connection.Id);
-        _sessions.TryRemove(connection.Id, out _);
+        _sessions.TryRemove(connection.Id, out var session);
+        if (session is not null)
+        {
+            var now = DateTimeOffset.UtcNow;
+            _pairedStore.Upsert(session.Device with { LastSeen = now });
+        }
         lock (_sessionSync)
         {
             if (_active?.Connection.Id == connection.Id)
