@@ -25,8 +25,6 @@
          runtime assets because this application never creates a WebView2 control. -->
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3719.77"
                       ExcludeAssets="runtime" PrivateAssets="all" />
-    <PackageReference Include="Microsoft.Web.WebView2.Core.Projection" Version="1.0.3719.77"
-                      ExcludeAssets="runtime" PrivateAssets="all" />
     <Content Include="Firewall\AllowFirewall.ps1" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>
