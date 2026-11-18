@@ -1239,5 +1239,12 @@
   "Teal": "青绿色",
   "{other} is {where} {me}.": "{other} 位于 {me} 的{where}。",
   "Bluetooth fallback": "蓝牙备用连接",
-  "After Wi-Fi or USB disconnects, searches nearby for 5 minutes. A Bluetooth session stays connected until Wi-Fi or USB returns.": "Wi-Fi 或 USB 断开后，会搜索附近设备 5 分钟。建立蓝牙会话后，将保持连接，直到 Wi-Fi 或 USB 恢复。"
+  "After Wi-Fi or USB disconnects, searches nearby for 5 minutes. A Bluetooth session stays connected until Wi-Fi or USB returns.": "Wi-Fi 或 USB 断开后，会搜索附近设备 5 分钟。建立蓝牙会话后，将保持连接，直到 Wi-Fi 或 USB 恢复。",
+  "Arrange navigation": "调整导航",
+  "Collapsed": "已折叠",
+  "Enter the computer’s IP address on your network.": "输入电脑在当前网络中的 IP 地址。",
+  "Expanded": "已展开",
+  "Quick actions": "快捷操作",
+  "Refresh nearby": "刷新附近设备",
+  "Scan QR code": "扫描二维码"
 }
