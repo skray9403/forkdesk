@@ -230,9 +230,8 @@ function loadChats() {
   return chats;
 }
 
-function loadSshd(force = false) {
+function loadSshd() {
   if (sshd) return sshd;
-  if (!force && (!settings || (!settings.terminal.allowMac && !settings.terminal.installedKey))) return null;
   const Sshd = require('./sshd');
   sshd = new Sshd({ link, settings, save: saveSettings, onChange: pushState });
   return sshd;
@@ -312,7 +311,9 @@ function start() {
     if (!sound) link.send({ t: P.T.AUDIO_POLICY, accept: false });
   });
   if (settings.audio.send || settings.audio.receive) loadSound();
-  if (settings.terminal.allowMac || settings.terminal.installedKey) loadSshd();
+  // Keep SSH_KEY / SSH_FORGET subscribed even while incoming-terminal access is off. Sshd skips
+  // its PowerShell service probe until the feature is enabled or an existing key needs cleanup.
+  loadSshd();
   link.setPlain(settings.files.plain === true); // Files › Encrypt file transfers
   if (settings.drive.on) loadDrive();
   // The files engine (shared/fx2.js) stays up while another TwinDesk computer is on the network: a
@@ -1377,7 +1378,7 @@ function buildState() {
     pcApps: pcApps.view(),
     macApps: settings.macApps,
     terminal: { ...settings.terminal, ...(terminal ? terminal.view() : { status: 'off', message: '', command: 'ssh twindesk' }), installedKey: undefined,
-      server: sshd ? sshd.view() : { service: 'unknown', busy: false, message: '', macAsked: false, info: null, admin: null } },
+      server: sshd.view() },
     files: { ...settings.files, importTo: explorer ? explorer.view : null, ...fileDrop.view(), received: receivedDir(settings, app.getPath('downloads')), smb: smb.view(), incoming: fileRecv.view(), drag: kvm.dragRecv.view(), macDrags: kvm.peerDrags, clip: fileClip.view() },
     notifs: { ...settings.notifs, ...notifs.view() },
     history: historyKeeper ? historyKeeper.view() : null,
