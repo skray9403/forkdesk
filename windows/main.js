@@ -547,7 +547,7 @@ function start() {
     pendingMacApp = null;
   });
   createTray();
-  if (!startHidden && firstRun) createMainWindow(); // returning users start in the native tray flyout
+  if (!startHidden && firstRun) { checkWindowsReadiness(); createMainWindow(); } // returning users start in the native tray flyout
   if (!openLink(process.argv) && !sendTo.handle(process.argv) && !openMacAppArg(process.argv)) openPhoneAppArg(process.argv);
   if (process.argv.includes('--test-monitor')) screen.open(true); // dev: ?test=1 pattern
 }
@@ -1528,7 +1528,6 @@ function statusLine(s) {
 // The main window exists only while it's open: closing it (to the tray) frees its page, about
 // 50-100 MB; opening it again makes it anew (showMain).
 function createMainWindow(tab) {
-  checkWindowsReadiness();
   const b = settings.windows.main || {};
   mainWin = new BrowserWindow({
     width: b.width || 900,
@@ -1580,13 +1579,13 @@ function saveBounds() {
 
 // Show the window on one tab (tray items, popups).
 function goTab(tab) {
-  if (!mainWin || mainWin.isDestroyed()) return void createMainWindow(tab); // goes there once loaded
+  if (!mainWin || mainWin.isDestroyed()) { checkWindowsReadiness(); return void createMainWindow(tab); } // goes there once loaded
   showMain();
   mainWin.webContents.send('go', tab);
 }
 
 function showMain() {
-  if (!mainWin || mainWin.isDestroyed()) return void createMainWindow();
+  if (!mainWin || mainWin.isDestroyed()) { checkWindowsReadiness(); return void createMainWindow(); }
   if (mainWin.isMinimized()) mainWin.restore();
   mainWin.show();
   mainWin.focus();
