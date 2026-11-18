@@ -305,8 +305,8 @@ function start() {
   });
   link = new Peer(guest);
   link.on(P.T.AUDIO_POLICY, (m) => {
-    soundPeerAccepts = m.accept === true;
-    if (sound) sound.macAccepts = soundPeerAccepts;
+    if (!sound) soundPeerAccepts = m.accept === true;
+    // Once loaded, Sound owns this event so its handler can apply the new policy.
   });
   link.on('welcome', () => {
     if (!sound) link.send({ t: P.T.AUDIO_POLICY, accept: false });
