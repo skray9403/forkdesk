@@ -18,6 +18,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Remove="Core/**/*.cs" />
+    <Compile Remove="Tests/**/*.cs" />
     <ProjectReference Include="Core/TwinDesk.Native.Core.csproj" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.6.5" />
   </ItemGroup>
