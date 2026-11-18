@@ -840,7 +840,6 @@ private fun TopIdentity(core: Core, v: Int) {
     Box(Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 14.dp)) { Identity(core, v, 36) }
 }
 
-@Composable
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MoreList(core: Core, v: Int, BOTTOM: List<Tab>, modifier: Modifier, go: (Tab) -> Unit) {
@@ -1000,7 +999,9 @@ private fun MoreList(core: Core, v: Int, BOTTOM: List<Tab>, modifier: Modifier, 
             }
         }
     }
-}@Composable
+}
+
+@Composable
 private fun Page(core: Core, v: Int, resumed: Int, tab: Tab, modifier: Modifier) {
     @Suppress("UNUSED_EXPRESSION") v // redraw on every Core change (Compose skips unread parameters)
     Column(modifier.fillMaxHeight().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp)) {
