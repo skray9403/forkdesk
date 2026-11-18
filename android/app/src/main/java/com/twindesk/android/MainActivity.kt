@@ -13,6 +13,7 @@ import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -75,6 +76,7 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Scrim
 import androidx.compose.material3.ToggleFloatingActionButton
 import androidx.compose.material3.ToggleFloatingActionButtonDefaults.animateIcon
 import androidx.compose.material3.OutlinedButton
@@ -291,6 +293,11 @@ fun App(core: Core, resumed: Int) {
     val motionScheme = MaterialTheme.motionScheme
     val pageSpatialSpec = motionScheme.defaultSpatialSpec<androidx.compose.ui.unit.IntOffset>()
     val pageEffectsSpec = motionScheme.fastEffectsSpec<Float>()
+    val fabMenuScrimAlpha by animateFloatAsState(
+        targetValue = if (fabMenuExpanded) 0.84f else 0f,
+        animationSpec = pageEffectsSpec,
+        label = "Quick actions scrim",
+    )
     // Wireless debugging went off (MIUI / HyperOS): ask once per time it happens.
     var adbAsked by rememberSaveable { mutableStateOf(false) }
     if (!core.adb.off) adbAsked = false
@@ -557,6 +564,17 @@ fun App(core: Core, resumed: Int) {
                     }
                 }
             }
+        }
+        // The Drive-style action flyout sits above a stock Material 3 Scrim.
+        // Keep the scrim beneath the menu so its actions remain fully prominent.
+        if (!wide && (fabMenuExpanded || fabMenuScrimAlpha > 0f)) {
+            Scrim(
+                contentDescription = tr("Dismiss quick actions"),
+                modifier = Modifier.fillMaxSize(),
+                onClick = { fabMenuExpanded = false },
+                alpha = { fabMenuScrimAlpha },
+                color = MaterialTheme.colorScheme.surface,
+            )
         }
         if (!wide) {
             FloatingActionButtonMenu(
