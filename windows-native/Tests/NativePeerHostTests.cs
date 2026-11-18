@@ -79,12 +79,40 @@ public sealed class NativePeerHostTests
             Assert.Equal(identity.Id, welcome.RootElement.GetProperty("macId").GetString());
             Assert.Equal(ProtocolV1.PeerOs.Windows, welcome.RootElement.GetProperty("os").GetString());
             Assert.Equal(phoneId, host.ConnectedDevice?.Id);
+            var resumeKey = welcome.RootElement.GetProperty("resume").GetString();
+            Assert.False(string.IsNullOrWhiteSpace(resumeKey));
 
+            using var resumedClient = new ClientWebSocket();
+            resumedClient.Options.RemoteCertificateValidationCallback = static (_, _, _, _) => true;
+            await resumedClient.ConnectAsync(new Uri($"wss://127.0.0.1:{host.Port}/"), CancellationToken.None);
+            await SendAsync(resumedClient, new
+            {
+                t = ProtocolV1.Message.Hello,
+                v = ProtocolV1.Version,
+                id = phoneId,
+                name = phoneName,
+                os = ProtocolV1.PeerOs.Android,
+                resume = resumeKey
+            });
+
+            using var resumedWelcome = await ReceiveUntilAsync(resumedClient,
+                rootElement => rootElement.TryGetProperty("t", out var t) &&
+                               t.GetString() == ProtocolV1.Message.Welcome);
+            Assert.True(resumedWelcome.RootElement.GetProperty("resumed").GetBoolean());
+
+            await SendAsync(resumedClient, new { t = ProtocolV1.Message.Ping, ts = 654321L });
+            using var resumedPong = await ReceiveUntilAsync(resumedClient,
+                rootElement => rootElement.TryGetProperty("t", out var t) &&
+                               t.GetString() == ProtocolV1.Message.Pong);
+            Assert.Equal(654321L, resumedPong.RootElement.GetProperty("ts").GetInt64());
+
+            await resumedClient.CloseAsync(WebSocketCloseStatus.NormalClosure, "test fallback", CancellationToken.None);
             await SendAsync(client, new { t = ProtocolV1.Message.Ping, ts = 123456L });
             using var pong = await ReceiveUntilAsync(client,
                 rootElement => rootElement.TryGetProperty("t", out var t) &&
                                t.GetString() == ProtocolV1.Message.Pong);
             Assert.Equal(123456L, pong.RootElement.GetProperty("ts").GetInt64());
+            Assert.Equal(phoneId, host.ConnectedDevice?.Id);
         }
         finally
         {

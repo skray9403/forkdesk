@@ -69,13 +69,30 @@ public sealed class NativePeerHost : IAsyncDisposable
     public async Task DisconnectAsync(CancellationToken cancellationToken = default)
     {
         PeerSession? active;
-        lock (_sessionSync) active = _active;
-        if (active is null) return;
+        TlsWebSocketConnection[] connections;
+        lock (_sessionSync)
+        {
+            active = _active;
+            if (active is null) return;
+            connections = active.GetConnections();
+            active.Released = true;
+            RemoveSessionMappingsLocked(active);
+            _active = null;
+        }
 
-        await SendErrorAsync(active.Connection, ProtocolV1.Error.Released, "Disconnected on this PC", cancellationToken)
-            .ConfigureAwait(false);
-        await active.Connection.CloseAsync(WebSocketCloseStatus.NormalClosure, "Disconnected on this PC", cancellationToken)
-            .ConfigureAwait(false);
+        foreach (var connection in connections)
+        {
+            try
+            {
+                await SendErrorAsync(connection, ProtocolV1.Error.Released,
+                    "Disconnected on this PC", cancellationToken).ConfigureAwait(false);
+                await connection.CloseAsync(WebSocketCloseStatus.NormalClosure,
+                    "Disconnected on this PC", cancellationToken).ConfigureAwait(false);
+            }
+            catch (WebSocketException) { }
+            catch (ObjectDisposedException) { }
+        }
+        StateChanged?.Invoke();
     }
 
     private async Task HandleTextAsync(TlsWebSocketConnection connection, string text)
@@ -103,7 +120,7 @@ public sealed class NativePeerHost : IAsyncDisposable
             var type = typeElement.GetString() ?? string.Empty;
             if (_sessions.TryGetValue(connection.Id, out var session))
             {
-                await HandleAuthenticatedMessageAsync(session, type, root).ConfigureAwait(false);
+                await HandleAuthenticatedMessageAsync(session, connection, type, root).ConfigureAwait(false);
                 return;
             }
 
@@ -131,7 +148,11 @@ public sealed class NativePeerHost : IAsyncDisposable
                     return;
 
                 case ProtocolV1.Message.Hello:
-                    await AuthenticateAsync(connection, root).ConfigureAwait(false);
+                    if (root.TryGetProperty("resume", out var resumeElement) &&
+                        resumeElement.ValueKind == JsonValueKind.String)
+                        await ResumeAsync(connection, root).ConfigureAwait(false);
+                    else
+                        await AuthenticateAsync(connection, root).ConfigureAwait(false);
                     return;
 
                 default:
@@ -186,22 +207,30 @@ public sealed class NativePeerHost : IAsyncDisposable
 
         var session = new PeerSession(connection, updated, os);
         PeerSession? replaced = null;
+        TlsWebSocketConnection[] replacedConnections = [];
         string? busyName = null;
         lock (_sessionSync)
         {
-            if (_active is not null && _active.Connection.Id != connection.Id)
+            if (_active is not null && _active.PrimaryConnection.Id != connection.Id)
             {
-                var takeover = os == ProtocolV1.PeerOs.Android || GetBool(message, "takeover");
+                var sameDevice = string.Equals(_active.Device.Id, deviceId, StringComparison.Ordinal);
+                var takeover = sameDevice || os == ProtocolV1.PeerOs.Android || GetBool(message, "takeover");
                 if (!takeover)
                     busyName = _active.Device.Name;
                 else
+                {
                     replaced = _active;
+                    replacedConnections = replaced.GetConnections();
+                    replaced.Released = true;
+                    RemoveSessionMappingsLocked(replaced);
+                }
             }
 
             if (busyName is null)
             {
                 _sessions[connection.Id] = session;
                 _active = session;
+                connection.MarkAuthenticated();
             }
         }
 
@@ -213,11 +242,22 @@ public sealed class NativePeerHost : IAsyncDisposable
 
         if (replaced is not null)
         {
-            _sessions.TryRemove(replaced.Connection.Id, out _);
-            await SendErrorAsync(replaced.Connection, ProtocolV1.Error.Replaced,
-                $"{name} took over").ConfigureAwait(false);
-            await replaced.Connection.CloseAsync(WebSocketCloseStatus.PolicyViolation,
-                "Session replaced by another peer").ConfigureAwait(false);
+            var code = os == ProtocolV1.PeerOs.Android && replaced.Os != ProtocolV1.PeerOs.Android
+                ? ProtocolV1.Error.Busy
+                : ProtocolV1.Error.Replaced;
+            var reason = code == ProtocolV1.Error.Busy ? $"In use by {name}" : $"{name} took over";
+
+            foreach (var oldConnection in replacedConnections)
+            {
+                try
+                {
+                    await SendErrorAsync(oldConnection, code, reason).ConfigureAwait(false);
+                    await oldConnection.CloseAsync(WebSocketCloseStatus.PolicyViolation, reason)
+                        .ConfigureAwait(false);
+                }
+                catch (WebSocketException) { }
+                catch (ObjectDisposedException) { }
+            }
         }
 
         await connection.SendTextAsync(JsonSerializer.Serialize(new
@@ -226,20 +266,119 @@ public sealed class NativePeerHost : IAsyncDisposable
             v = ProtocolV1.Version,
             macId = _hostId,
             macName = _hostName,
-            os = ProtocolV1.PeerOs.Windows
+            os = ProtocolV1.PeerOs.Windows,
+            resume = session.ResumeKey
         })).ConfigureAwait(false);
 
         StateChanged?.Invoke();
     }
 
-    private async Task HandleAuthenticatedMessageAsync(PeerSession session, string type, JsonElement message)
+    /// <summary>Moves an authenticated peer to a new socket and keeps the old socket as fallback.</summary>
+    private async Task ResumeAsync(TlsWebSocketConnection connection, JsonElement message)
+    {
+        if (GetInt(message, "v") != ProtocolV1.Version)
+        {
+            await SendErrorAsync(connection, ProtocolV1.Error.VersionMismatch,
+                $"This PC speaks protocol v{ProtocolV1.Version}").ConfigureAwait(false);
+            return;
+        }
+
+        var deviceId = GetString(message, "id");
+        var resumeKey = GetString(message, "resume");
+        PeerSession? session;
+        TlsWebSocketConnection? supersededPrimary = null;
+
+        lock (_sessionSync)
+        {
+            session = _active;
+            if (session is null ||
+                !string.Equals(session.Device.Id, deviceId, StringComparison.Ordinal) ||
+                !string.Equals(session.ResumeKey, resumeKey, StringComparison.Ordinal) ||
+                string.IsNullOrEmpty(resumeKey))
+            {
+                session = null;
+            }
+            else
+            {
+                if (session.AlternateConnection is null)
+                    session.AlternateConnection = session.PrimaryConnection;
+                else
+                {
+                    supersededPrimary = session.PrimaryConnection;
+                    _sessions.TryRemove(supersededPrimary.Id, out _);
+                }
+
+                session.PrimaryConnection = connection;
+                session.Touch();
+                connection.MarkAuthenticated();
+                _sessions[connection.Id] = session;
+            }
+        }
+
+        if (session is null)
+        {
+            await SendErrorAsync(connection, ProtocolV1.Error.BadMessage, "Nothing to resume").ConfigureAwait(false);
+            return;
+        }
+
+        if (supersededPrimary is not null)
+        {
+            try
+            {
+                await supersededPrimary.CloseAsync(WebSocketCloseStatus.NormalClosure,
+                    "Session moved to a newer transport").ConfigureAwait(false);
+            }
+            catch (WebSocketException) { }
+            catch (ObjectDisposedException) { }
+        }
+
+        await connection.SendTextAsync(JsonSerializer.Serialize(new
+        {
+            t = ProtocolV1.Message.Welcome,
+            v = ProtocolV1.Version,
+            resumed = true
+        })).ConfigureAwait(false);
+        StateChanged?.Invoke();
+    }
+
+    private void RemoveSessionMappingsLocked(PeerSession session)
+    {
+        foreach (var connection in session.GetConnections())
+            _sessions.TryRemove(connection.Id, out _);
+    }
+
+    private async Task EndSessionAsync(PeerSession session, WebSocketCloseStatus status, string reason)
+    {
+        TlsWebSocketConnection[] connections;
+        lock (_sessionSync)
+        {
+            connections = session.GetConnections();
+            session.Released = true;
+            RemoveSessionMappingsLocked(session);
+            if (_active == session) _active = null;
+        }
+
+        foreach (var connection in connections)
+        {
+            try { await connection.CloseAsync(status, reason).ConfigureAwait(false); }
+            catch (WebSocketException) { }
+            catch (ObjectDisposedException) { }
+        }
+        StateChanged?.Invoke();
+    }
+
+    private async Task HandleAuthenticatedMessageAsync(
+        PeerSession session,
+        TlsWebSocketConnection connection,
+        string type,
+        JsonElement message)
     {
         session.Touch();
 
         switch (type)
         {
             case ProtocolV1.Message.Ping:
-                await session.Connection.SendTextAsync(JsonSerializer.Serialize(new
+                await connection.SendTextAsync(JsonSerializer.Serialize(new
                 {
                     t = ProtocolV1.Message.Pong,
                     ts = GetLong(message, "ts")
@@ -250,8 +389,8 @@ public sealed class NativePeerHost : IAsyncDisposable
                 return;
 
             case ProtocolV1.Message.Bye:
-                await session.Connection.CloseAsync(WebSocketCloseStatus.NormalClosure,
-                    "Peer disconnected").ConfigureAwait(false);
+                await EndSessionAsync(session, WebSocketCloseStatus.NormalClosure, "Peer disconnected")
+                    .ConfigureAwait(false);
                 return;
         }
 
@@ -268,21 +407,39 @@ public sealed class NativePeerHost : IAsyncDisposable
             while (await timer.WaitForNextTickAsync(cancellationToken).ConfigureAwait(false))
             {
                 PeerSession? active;
-                lock (_sessionSync) active = _active;
+                TlsWebSocketConnection[] connections;
+                lock (_sessionSync)
+                {
+                    active = _active;
+                    connections = active?.GetConnections() ?? [];
+                }
                 if (active is null) continue;
 
                 if (DateTimeOffset.UtcNow - active.LastReceived > TimeSpan.FromMilliseconds(ProtocolV1.SessionTimeoutMs))
                 {
-                    await active.Connection.CloseAsync(WebSocketCloseStatus.EndpointUnavailable,
-                        "Peer stopped responding", cancellationToken).ConfigureAwait(false);
+                    foreach (var connection in connections)
+                    {
+                        try
+                        {
+                            await connection.CloseAsync(WebSocketCloseStatus.EndpointUnavailable,
+                                "Peer stopped responding", cancellationToken).ConfigureAwait(false);
+                        }
+                        catch (WebSocketException) { }
+                        catch (ObjectDisposedException) { }
+                    }
                     continue;
                 }
 
-                await active.Connection.SendTextAsync(JsonSerializer.Serialize(new
+                var ping = JsonSerializer.Serialize(new
                 {
                     t = ProtocolV1.Message.Ping,
                     ts = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
-                }), cancellationToken).ConfigureAwait(false);
+                });
+                foreach (var connection in connections)
+                {
+                    if (connection.State != WebSocketState.Open) continue;
+                    await connection.SendTextAsync(ping, cancellationToken).ConfigureAwait(false);
+                }
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
@@ -325,17 +482,40 @@ public sealed class NativePeerHost : IAsyncDisposable
     private void HandleConnectionClosed(TlsWebSocketConnection connection)
     {
         _pairing.ConnectionClosed(connection.Id);
-        _sessions.TryRemove(connection.Id, out var session);
-        if (session is not null)
-        {
-            var now = DateTimeOffset.UtcNow;
-            _pairedStore.Upsert(session.Device with { LastSeen = now });
-        }
+        PeerSession? endedSession = null;
+
         lock (_sessionSync)
         {
-            if (_active?.Connection.Id == connection.Id)
-                _active = null;
+            if (!_sessions.TryRemove(connection.Id, out var session))
+                return;
+
+            if (session.AlternateConnection?.Id == connection.Id)
+            {
+                session.AlternateConnection = null;
+            }
+            else if (session.PrimaryConnection.Id == connection.Id)
+            {
+                var alternate = session.AlternateConnection;
+                if (alternate is not null && alternate.State == WebSocketState.Open)
+                {
+                    session.PrimaryConnection = alternate;
+                    session.AlternateConnection = null;
+                }
+                else
+                {
+                    if (alternate is not null)
+                        _sessions.TryRemove(alternate.Id, out _);
+                    session.AlternateConnection = null;
+                    if (_active == session)
+                        _active = null;
+                    endedSession = session;
+                }
+            }
         }
+
+        if (endedSession is not null)
+            _pairedStore.Upsert(endedSession.Device with { LastSeen = DateTimeOffset.UtcNow });
+
         StateChanged?.Invoke();
     }
 
@@ -389,13 +569,22 @@ public sealed class NativePeerHost : IAsyncDisposable
         AuthenticatedMessageReceived = null;
     }
 
-    private sealed class PeerSession(TlsWebSocketConnection connection, PairedDevice device, string os)
+    private sealed class PeerSession(TlsWebSocketConnection primaryConnection, PairedDevice device, string os)
     {
         private long _lastReceivedTicks = DateTime.UtcNow.Ticks;
-        public TlsWebSocketConnection Connection { get; } = connection;
+
+        public TlsWebSocketConnection PrimaryConnection { get; set; } = primaryConnection;
+        public TlsWebSocketConnection? AlternateConnection { get; set; }
         public PairedDevice Device { get; } = device;
         public string Os { get; } = os;
+        public string ResumeKey { get; } = ProtocolCrypto.RandomHex(16);
+        public bool Released { get; set; }
         public DateTimeOffset LastReceived => new(Interlocked.Read(ref _lastReceivedTicks), TimeSpan.Zero);
+
+        public TlsWebSocketConnection[] GetConnections() => AlternateConnection is null
+            ? [PrimaryConnection]
+            : [PrimaryConnection, AlternateConnection];
+
         public void Touch() => Interlocked.Exchange(ref _lastReceivedTicks, DateTime.UtcNow.Ticks);
     }
 }
