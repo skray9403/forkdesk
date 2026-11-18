@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml;
 using TwinDesk.Native.Core;
+using TwinDesk.Native.Core.Discovery;
 
 namespace TwinDesk.Native;
 
@@ -12,7 +13,7 @@ public partial class App : Application
 
     protected override async void OnLaunched(LaunchActivatedEventArgs args)
     {
-        _core = new NativeCoreClient(new Discovery.DiscoveryOptions());
+        _core = new NativeCoreClient(new DiscoveryOptions());
         _window = new MainWindow(_core);
         _window.Activate();
 
