@@ -69,7 +69,7 @@ public sealed class WindowsClipboardAdapter : IClipboardAdapter
         return completion.Task;
     }
 
-    private void OnClipboardContentChanged(object sender, object args) =>
+    private void OnClipboardContentChanged(object? sender, object args) =>
         ContentChanged?.Invoke(this, EventArgs.Empty);
 
     public void Dispose()
