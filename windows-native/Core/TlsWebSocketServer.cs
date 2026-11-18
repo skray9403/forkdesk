@@ -128,6 +128,16 @@ public sealed class TlsWebSocketServer : IAsyncDisposable
                 : remote?.Address.ToString() ?? string.Empty;
 
             connection = new TlsWebSocketConnection(id, address, remote?.Port ?? 0, webSocket);
+            if (address is not ("127.0.0.1" or "::1"))
+            {
+                var waiting = _connections.Values
+                    .Where(existing => !existing.IsAuthenticated &&
+                        string.Equals(existing.RemoteAddress, address, StringComparison.Ordinal))
+                    .OrderBy(existing => existing.ConnectedAt)
+                    .ToArray();
+                if (waiting.Length >= 16)
+                    await waiting[0].DisposeAsync().ConfigureAwait(false);
+            }
             _connections[id] = connection;
             await ReceiveLoopAsync(connection, cancellationToken).ConfigureAwait(false);
         }
@@ -215,6 +225,8 @@ public sealed class TlsWebSocketServer : IAsyncDisposable
     {
         var socket = connection.Socket;
         var rented = ArrayPool<byte>.Shared.Rent(ReceiveBufferBytes);
+        using var unauthenticatedTimeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        unauthenticatedTimeout.CancelAfter(TimeSpan.FromMilliseconds(ProtocolV1.UnauthTimeoutMs));
         try
         {
             while (!cancellationToken.IsCancellationRequested &&
@@ -225,7 +237,7 @@ public sealed class TlsWebSocketServer : IAsyncDisposable
                 do
                 {
                     result = await socket.ReceiveAsync(new ArraySegment<byte>(rented, 0, ReceiveBufferBytes),
-                        cancellationToken).ConfigureAwait(false);
+                        unauthenticatedTimeout.Token).ConfigureAwait(false);
 
                     if (result.MessageType == WebSocketMessageType.Close)
                         return;
@@ -258,7 +270,16 @@ public sealed class TlsWebSocketServer : IAsyncDisposable
                 var handler = TextReceived;
                 if (handler is not null)
                     await handler(connection, text).ConfigureAwait(false);
+
+                if (connection.IsAuthenticated)
+                    unauthenticatedTimeout.CancelAfter(Timeout.InfiniteTimeSpan);
             }
+        }
+        catch (OperationCanceledException) when (
+            unauthenticatedTimeout.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+        {
+            await connection.CloseAsync(WebSocketCloseStatus.PolicyViolation,
+                "Unauthenticated connection timed out", CancellationToken.None).ConfigureAwait(false);
         }
         finally
         {
@@ -309,12 +330,17 @@ public sealed class TlsWebSocketConnection : IAsyncDisposable
 {
     private readonly SemaphoreSlim _sendLock = new(1, 1);
     private int _disposed;
+    private int _authenticated;
 
     internal WebSocket Socket { get; }
     public string Id { get; }
     public string RemoteAddress { get; }
     public int RemotePort { get; }
+    public DateTimeOffset ConnectedAt { get; } = DateTimeOffset.UtcNow;
+    public bool IsAuthenticated => Volatile.Read(ref _authenticated) == 1;
     public WebSocketState State => Socket.State;
+
+    internal void MarkAuthenticated() => Volatile.Write(ref _authenticated, 1);
 
     internal TlsWebSocketConnection(string id, string remoteAddress, int remotePort, WebSocket socket)
     {
