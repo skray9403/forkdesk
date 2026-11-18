@@ -28,7 +28,9 @@ class Sshd {
     this.message = '';
     this.link.on(T.SSH_KEY, (m) => this._onKey(m));
     this.link.on(T.SSH_FORGET, () => this._forget());
-    this.refresh();
+    // The event handlers must always be present so a peer can request access during an existing
+    // session. The PowerShell/admin probe is only needed when access is enabled or a key exists.
+    if (this.cfg.allowMac || this.cfg.installedKey) this.refresh();
   }
 
   get cfg() {
@@ -64,7 +66,10 @@ class Sshd {
       await this._removeAll();
       return this.pendingKey ? this._info(false, 'not_allowed') : this.onChange();
     }
-    if (!this.pendingKey) return this.onChange();
+    if (!this.pendingKey) {
+      if (this.service === 'unknown') await this.refresh();
+      return this.onChange();
+    }
     await this.refresh();
     if (this.service !== 'running') return this._info(false, 'remote_login_off');
     const line = OPTIONS + ' ' + this.pendingKey + ' macshare:' + this.macId();
