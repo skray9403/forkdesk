@@ -1,7 +1,10 @@
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using TwinDesk.Native.Pages;
+
 namespace TwinDesk.Native;
+
 public sealed partial class MainWindow : Window
 {
     public MainWindow()
