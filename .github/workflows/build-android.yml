@@ -1,6 +1,9 @@
 name: Build Android
 
 on:
+  push:
+    branches:
+      - ui/expressive-clock-navigation-study
   workflow_dispatch:
     inputs:
       tag:
@@ -8,9 +11,9 @@ on:
         required: false
         default: ''
       ref:
-        description: Branch to build (a test branch; releases come from main).
+        description: Optional branch override; blank builds the selected branch.
         required: false
-        default: main
+        default: ''
 
 # Write: the files can go straight onto a release.
 permissions:
@@ -21,10 +24,10 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-      # main unless another branch is asked for (ref), whichever branch the run was started from.
+      # Use the explicitly requested ref, otherwise the branch or commit that triggered this run.
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.ref || 'main' }}
+          ref: ${{ inputs.ref || github.ref }}
 
       - uses: actions/setup-java@v4
         with:
