@@ -8,6 +8,7 @@ public interface INativeCoreClient : IAsyncDisposable
     Task PairAsync(string peerId, CancellationToken cancellationToken = default);
     Task ApprovePairingAsync(bool allow, CancellationToken cancellationToken = default);
     Task<bool> ForgetDeviceAsync(string deviceId, CancellationToken cancellationToken = default);
+    Task SetClipboardOptionsAsync(ClipboardSyncOptions options, CancellationToken cancellationToken = default);
     Task FixFirewallAsync(CancellationToken cancellationToken = default);
     Task DisconnectAsync(CancellationToken cancellationToken = default);
 }

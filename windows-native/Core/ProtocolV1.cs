@@ -1,10 +1,5 @@
 namespace TwinDesk.Native.Core;
 
-/// <summary>
-/// Protocol-v1 constants shared with the existing Android implementation.
-/// Keep wire values stable. This file deliberately contains only the discovery
-/// and session foundation; feature message names are added with their ports.
-/// </summary>
 public static class ProtocolV1
 {
     public const int Version = 1;
@@ -21,6 +16,7 @@ public static class ProtocolV1
     public const int PhoneGraceMs = 30000;
     public const int UnauthTimeoutMs = 70000;
     public const int MaxPayloadBytes = 16 * 1024 * 1024;
+    public const int ClipboardMaxBytes = 256 * 1024;
     public const string SasLabel = "macshare-sas-v1";
 
     public static class PeerOs
@@ -46,6 +42,9 @@ public static class ProtocolV1
         public const string Ping = "ping";
         public const string Pong = "pong";
         public const string Bye = "bye";
+        public const string Clip = "clip";
+        public const string ClipRequest = "clip.request";
+        public const string ClipPolicy = "clip.policy";
     }
 
     public static class Error

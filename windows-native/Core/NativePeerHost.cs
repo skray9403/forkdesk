@@ -111,6 +111,18 @@ public sealed class NativePeerHost : IAsyncDisposable
         return removed;
     }
 
+    public async Task<bool> SendToActiveSessionAsync(string message, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(message);
+        PeerSession? active;
+        lock (_sessionSync) active = _active;
+        if (active is null || active.PrimaryConnection.State != WebSocketState.Open)
+            return false;
+
+        await active.PrimaryConnection.SendTextAsync(message, cancellationToken).ConfigureAwait(false);
+        return true;
+    }
+
     public async Task DisconnectAsync(CancellationToken cancellationToken = default)
     {
         PeerSession? active;
