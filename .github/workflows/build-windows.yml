@@ -17,10 +17,10 @@ on:
         required: false
         default: main
       signing:
-        description: SignPath signing policy (test-signing = self-signed test certificate; release-signing once the SignPath Foundation certificate is issued; none = unsigned)
+        description: SignPath signing policy. test-signing and release-signing require the SIGNPATH_API_TOKEN repository secret; none builds unsigned installers.
         type: choice
         required: false
-        default: test-signing
+        default: none
         options:
           - test-signing
           - release-signing
