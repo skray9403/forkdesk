@@ -100,6 +100,58 @@ public sealed partial class AndroidPage : Page
             }
         }
 
+        PairedDevicesPanel.Children.Clear();
+        var pairedDevices = snapshot.PairedDevices ?? Array.Empty<PairedDevice>();
+        if (pairedDevices.Count == 0)
+        {
+            PairedDevicesPanel.Children.Add(new TextBlock
+            {
+                Text = "No trusted devices yet.",
+                Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"]
+            });
+        }
+        else
+        {
+            foreach (var device in pairedDevices.OrderBy(device => device.Name))
+            {
+                var details = new StackPanel { Spacing = 3 };
+                details.Children.Add(new TextBlock
+                {
+                    Text = device.Name,
+                    FontSize = 15,
+                    FontWeight = Microsoft.UI.Text.FontWeights.SemiBold
+                });
+                details.Children.Add(new TextBlock
+                {
+                    Text = $"{device.Os} · Paired {device.PairedAt.ToLocalTime():d}",
+                    FontSize = 12,
+                    Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"]
+                });
+
+                var forgetButton = new Button
+                {
+                    Content = "Forget",
+                    Tag = device.Id,
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+                forgetButton.Click += ForgetDevice_Click;
+
+                var row = new Grid { ColumnSpacing = 12 };
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                row.Children.Add(details);
+                Grid.SetColumn(forgetButton, 1);
+                row.Children.Add(forgetButton);
+                PairedDevicesPanel.Children.Add(new Border
+                {
+                    Padding = new Thickness(14),
+                    CornerRadius = new CornerRadius(10),
+                    BorderThickness = new Thickness(1),
+                    Child = row
+                });
+            }
+        }
+
         var prompt = snapshot.PendingPairing;
         PairingPromptCard.Visibility = prompt is null ? Visibility.Collapsed : Visibility.Visible;
         if (prompt is null) return;
@@ -154,6 +206,25 @@ public sealed partial class AndroidPage : Page
         {
             FirewallInfoBar.Message = $"Firewall repair was not completed: {ex.Message}";
             FixFirewallButton.IsEnabled = true;
+        }
+    }
+
+    private async void ForgetDevice_Click(object sender, RoutedEventArgs e)
+    {
+        var core = _core;
+        if (core is null || sender is not Button { Tag: string deviceId } button)
+            return;
+
+        button.IsEnabled = false;
+        try
+        {
+            await core.ForgetDeviceAsync(deviceId);
+            ApplySnapshot(await core.GetSnapshotAsync());
+        }
+        catch (Exception ex)
+        {
+            DiscoveryStatusText.Text = $"Could not forget device: {ex.Message}";
+            button.IsEnabled = true;
         }
     }
 

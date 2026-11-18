@@ -139,6 +139,27 @@ public sealed class PairingResponderTests
     }
 
     [Fact]
+    public async Task ForgettingDeviceCancelsItsPendingPairAndRemovesStoredCredentials()
+    {
+        var store = new MemoryStore();
+        var now = DateTimeOffset.UtcNow;
+        store.Upsert(new PairedDevice("android-device-id", "Pixel", "android",
+            ProtocolCrypto.Sha256Hex("old-token"), now, now));
+        await using var responder = Create(store);
+        var messages = new List<PairingWireMessage>();
+        responder.MessageReady += messages.Add;
+
+        responder.Begin("socket-1", RemoteAddress, Request());
+        Assert.NotNull(responder.Pending);
+
+        Assert.True(responder.ForgetDevice("android-device-id"));
+        Assert.Null(responder.Pending);
+        Assert.Empty(store.ReadAll());
+        Assert.Equal(ProtocolV1.Message.Error, messages.Last().Type);
+        Assert.Equal(ProtocolV1.Error.PairRefused, messages.Last().Fields["code"]);
+    }
+
+    [Fact]
     public async Task PairedDeviceStorePersistsOnlyTokenHashesAndSupportsForget()
     {
         var root = Path.Combine(Path.GetTempPath(), "TwinDesk.Native.Tests", Guid.NewGuid().ToString("N"));

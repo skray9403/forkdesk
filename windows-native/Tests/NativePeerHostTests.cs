@@ -120,6 +120,8 @@ public sealed class NativePeerHostTests
             await SendAsync(client, new { t = ProtocolV1.Message.Bye });
             await WaitUntilAsync(() => host.ConnectedDevice is null);
             Assert.False(host.IsPhoneGraceActive);
+            Assert.True(await host.ForgetDeviceAsync(phoneId));
+            Assert.DoesNotContain(host.PairedDevices, device => device.Id == phoneId);
         }
         finally
         {
