@@ -1279,7 +1279,7 @@ function statusLine(s) {
 
 // ---- windows and tray ----
 
-function createMainWindow() {
+function createMainWindow(tab) {
   const b = settings.windows.main || {};
   mainWin = new BrowserWindow({
     width: b.width || 900,
@@ -1305,18 +1305,15 @@ function createMainWindow() {
   const show = () => {
     if (shown || win.isDestroyed()) return;
     shown = true;
-    if (!startHidden) win.show();
+    if (tab) win.webContents.send('go', tab);
+    win.show();
+    win.focus();
   };
   win.once('ready-to-show', show);
   // Match the ordinary window's fallback without revealing a start-to-tray launch.
   win.webContents.once('did-finish-load', show);
-  mainWin.on('close', (e) => {
-    saveBounds();
-    if (!quitting) {
-      e.preventDefault();
-      mainWin.hide();
-    }
-  });
+  mainWin.on('close', () => saveBounds());
+  mainWin.on('closed', () => { if (mainWin === win) mainWin = null; });
 }
 
 // A new language restarts TwinDesk: every window then loads English and that language only
@@ -1334,12 +1331,13 @@ function saveBounds() {
 
 // Show the window on one tab (tray items, popups).
 function goTab(tab) {
+  if (!mainWin || mainWin.isDestroyed()) return void createMainWindow(tab);
   showMain();
-  if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send('go', tab);
+  mainWin.webContents.send('go', tab);
 }
 
 function showMain() {
-  if (!mainWin || mainWin.isDestroyed()) return;
+  if (!mainWin || mainWin.isDestroyed()) return void createMainWindow();
   if (mainWin.isMinimized()) mainWin.restore();
   mainWin.show();
   mainWin.focus();
@@ -1436,7 +1434,7 @@ function updateTray(s = buildState()) {
   const host = s.paired && s.paired.macName;
   const again = !connected && host && (s.link.state === 'stopped' || !!s.link.busy);
   const key = JSON.stringify([name, rtt, again, away, pcApps ? pcApps.moved.size : 0, kvm.linked, kvm.paused, kvm.locked, kvm.mode, settings.keys.lockKeys, sharing, s.pcScreen.mode, watching, k.driveOther, k.beDriven, settings.clipboard.enabled,
-    settings.audio.send, settings.app.hud, k.keyboard, settings.files.edgeDrag, settings.files.shortcuts, settings.files.copyKeys, found.map((d) => [d.id, d.name, d.os]), s.updates && s.updates.available && s.updates.latest]);
+    settings.audio.send, settings.app.hud, k.keyboard, settings.files.edgeDrag, settings.files.shortcuts, settings.files.copyKeys, found.map((d) => [d.id, d.name, d.os]), s.updates && s.updates.available && s.updates.latest, nativeTheme.shouldUseDarkColors]);
   if (key === trayKey) return;
   trayKey = key;
   const other = name || t('Other Computer');
@@ -1486,7 +1484,7 @@ function updateTray(s = buildState()) {
     quit: () => app.quit(),
   });
   if (nativeTrayAvailable && helper && helper.running) {
-    helper.send('trayUpdate', { items: nativeTrayItems(template), tooltip });
+    helper.send('trayUpdate', { items: nativeTrayItems(template), tooltip, connected, dark: nativeTheme.shouldUseDarkColors });
   } else if (tray) {
     tray.setToolTip(tooltip);
     tray.setContextMenu(Menu.buildFromTemplate(template));

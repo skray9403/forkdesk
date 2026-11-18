@@ -1618,7 +1618,7 @@ function updateTray(s = buildState()) {
   const host = s.paired && s.paired.macName;
   const again = !connected && host && (s.link.state === 'stopped' || !!s.link.busy);
   const key = JSON.stringify([name, rtt, again, away, pcApps ? pcApps.moved.size : 0, kvm.linked, kvm.paused, kvm.locked, kvm.mode, settings.keys.lockKeys, sharing, s.pcScreen.mode, watching, k.driveOther, k.beDriven, settings.clipboard.enabled,
-    settings.audio.send, settings.app.hud, k.keyboard, settings.files.edgeDrag, settings.files.shortcuts, settings.files.copyKeys, rezumeItems().map((i) => i.label), found.map((d) => [d.id, d.name, d.os]), s.updates && s.updates.available && s.updates.latest]);
+    settings.audio.send, settings.app.hud, k.keyboard, settings.files.edgeDrag, settings.files.shortcuts, settings.files.copyKeys, rezumeItems().map((i) => i.label), found.map((d) => [d.id, d.name, d.os]), s.updates && s.updates.available && s.updates.latest, nativeTheme.shouldUseDarkColors]);
   if (key === trayKey) return;
   trayKey = key;
   const other = name || t('Other Computer');
@@ -1670,7 +1670,7 @@ function updateTray(s = buildState()) {
     quit: () => app.quit(),
   });
   if (nativeTrayAvailable && helper && helper.running) {
-    helper.send('trayUpdate', { items: nativeTrayItems(template), tooltip });
+    helper.send('trayUpdate', { items: nativeTrayItems(template), tooltip, connected, dark: nativeTheme.shouldUseDarkColors });
   } else if (tray) {
     tray.setToolTip(tooltip);
     tray.setContextMenu(Menu.buildFromTemplate(template));
