@@ -26,6 +26,21 @@ The native helper is also tuned for its long-lived tray state:
 - The cursor crash-recovery guard is not started at application startup. It is started immediately before the first mouse capture that may hide the Windows system cursor, and the helper waits for the guard's ready signal before hiding it. Keyboard-only capture does not start the guard. Full KVM's separate agent retains its existing unguarded behavior.
 - These are reductions in idle polling and idle process count, not measured benchmark results. Verify on the same Windows machine with the same paired/idle state before claiming a numeric CPU or memory saving.
 
+## On-demand Windows startup services
+
+The returning user's tray-only path keeps discovery, pairing, the HTTPS peer host, Android/ADB connectivity, clipboard, remote input, file transfer, and the native helper available. Those are part of the always-ready connection layer and are not disabled by this optimization.
+
+Optional services now follow their existing settings:
+
+- The Chats service is created only when Messages/Chats is enabled.
+- The Windows audio service and its hidden audio-window IPC are created only while sending or receiving PC audio is enabled. A lightweight listener remembers the peer's audio policy while the service is unloaded, so enabling audio after pairing still uses the peer's current policy.
+- The incoming SSH server status probe is skipped unless **Allow the other computer to open a terminal here** is enabled or an existing key needs cleanup. The setup action loads it explicitly.
+- The virtual-display driver and Windows Firewall PowerShell checks are deferred until the main workspace is opened. The tray's explicit screen-sharing and Extend actions still request the display check on demand.
+
+This changes when optional services are initialized; it does not remove their features or the Android companion support. It also does not remove macOS/Linux peer interoperability: those are not packaged as macOS/Linux runtime executables inside the Windows installer in the first place.
+
+The changes are expected to reduce unnecessary startup work and process launches. No RAM/CPU or launch-time percentage is claimed until the same Windows machine is measured before and after.
+
 ## Full native UI direction
 
 A complete native rewrite is a separate project, not a safe one-commit swap. The current Windows UI contains feature pages and IPC surfaces for pairing, phone integration, screen sharing, remote input, files, clipboard, audio, notifications, camera, and Mesh. Replacing only the window framework without porting those contracts would make a smaller but incomplete client.
