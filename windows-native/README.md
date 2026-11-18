@@ -7,9 +7,10 @@ This is the native Windows replacement target, built with WinUI 3 and C#.
 The application UI is WinUI/XAML. It does not use Electron, Chromium, HTML, CSS,
 JavaScript or a WebView2 control to render its interface, and it does not navigate
 to web content. The Windows App SDK brings WebView2 API assemblies transitively.
-The app does not instantiate a WebView2 control, include the WebView2 native loader,
-or bundle the Edge WebView2 browser runtime. CI checks the native loader and browser
-executable boundaries; transitive API assemblies do not mean the app uses a web renderer.
+The app does not instantiate a WebView2 control or bundle the Edge WebView2 browser
+runtime. The Windows App SDK may carry the small WebView2 loader library transitively;
+that library is not a browser engine and does not render the interface. CI verifies
+that the Edge browser executable is not bundled.
 
 ## Windows product scope
 
