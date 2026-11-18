@@ -211,6 +211,8 @@ async function packStore(arch) {
       productName: 'TwinDesk',
       copyright: 'Copyright (C) 2026 inukaasith',
       electronVersion,
+      // TwinDesk has its own five translation catalogs; ship only Chromium's fallback UI locale.
+      electronLanguages: ['en-US'],
       // installer/appx: the Store's logos (from icon.png).
       directories: { app: STAGE, output: path.join(WIN, 'dist'), buildResources: __dirname },
       asar: false,
@@ -241,6 +243,8 @@ async function pack(arch) {
       productName: 'TwinDesk',
       copyright: 'Copyright (C) 2026 inukaasith',
       electronVersion,
+      // TwinDesk has its own five translation catalogs; ship only Chromium's fallback UI locale.
+      electronLanguages: ['en-US'],
       directories: { app: STAGE, output: path.join(WIN, 'dist') },
       asar: false,
       npmRebuild: false,
@@ -284,6 +288,8 @@ async function packPortable(arch) {
       productName: 'TwinDesk',
       copyright: 'Copyright (C) 2026 inukaasith',
       electronVersion,
+      // TwinDesk has its own five translation catalogs; ship only Chromium's fallback UI locale.
+      electronLanguages: ['en-US'],
       directories: { app: STAGE, output: path.join(WIN, 'dist') },
       asar: false,
       npmRebuild: false,

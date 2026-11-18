@@ -217,7 +217,9 @@ function start() {
   // Quiet links (#143): an idle session stops pinging every second; General › Advanced › Keep pinging.
   require('../../shared/quiet.js').use(() => !!(settings && settings.app && settings.app.keepPinging === true));
   require('../../shared/tailnet.js').use(() => !(settings && settings.net && settings.net.tailscale === false)); // General › Tailscale (#161)
-  i18n = I18n.create(I18n.resolveLanguage(settings.ui.language, app.getLocale()));
+  const preferredLanguages = app.getPreferredSystemLanguages();
+  const systemLanguage = preferredLanguages && preferredLanguages[0] || app.getLocale();
+  i18n = I18n.create(I18n.resolveLanguage(settings.ui.language, systemLanguage));
 
   discovery = new Discovery(device);
   discovery.on('change', pushState);
