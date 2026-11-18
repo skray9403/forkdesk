@@ -1,15 +1,6 @@
 namespace TwinDesk.Native.Core;
 
-public sealed record NearbyPeer(
-    string Id, string Name, PeerPlatform Platform, string Address, bool IsPaired, bool IsConnected);
-
-public sealed record NativeCoreSnapshot(
-    bool IsAvailable, string Status, IReadOnlyList<NearbyPeer> NearbyPeers);
-
-/// <summary>
-/// UI-facing boundary for the native Windows session engine. UI pages must not call Electron,
-/// Node or platform-specific peer implementations directly.
-/// </summary>
+/// <summary>UI-facing boundary for native Windows session and peer services.</summary>
 public interface INativeCoreClient : IAsyncDisposable
 {
     event EventHandler<NativeCoreSnapshot>? SnapshotChanged;
