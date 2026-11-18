@@ -50,6 +50,7 @@ namespace MacShare
         public void Begin(bool mouse, bool keys, string edge)
         {
             if (capturing) { capMouse = mouse; capKeys = keys; return; }
+            if (mouse && EnsureCursorGuard != null) EnsureCursorGuard();
             mouseArrivalGuard = false;
             capturing = true; capMouse = mouse; capKeys = keys;
             CrossingReset();

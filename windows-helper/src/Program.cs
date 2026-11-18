@@ -63,6 +63,7 @@ namespace MacShare
             Native.NoThrottling(); // edge pushes and hooks keep their pace with the window hidden in the tray
             AppDomain.CurrentDomain.UnhandledException += delegate { HideCursor.Restore(); };
             capture = new Capture(Emit);
+            capture.EnsureCursorGuard = EnsureCursorGuard;
             injector = new Injector();
             stylus = new Stylus(injector);
             touch = new Touch(injector);
@@ -329,12 +330,7 @@ namespace MacShare
                     case "crossingFlags": capture.RemoteCrossingBits = (int)Json.Num(c, "flags", 0) & 15; break;
                     case "emergencyActive": capture.SetEmergencyActive(Json.Bool(c, "on", false)); break;
                     case "capture":
-                        if (Json.Bool(c, "on", false))
-                        {
-                            bool mouse = Json.Bool(c, "mouse", true);
-                            if (mouse) EnsureCursorGuard();
-                            capture.Begin(mouse, Json.Bool(c, "keyboard", true));
-                        }
+                        if (Json.Bool(c, "on", false)) capture.Begin(Json.Bool(c, "mouse", true), Json.Bool(c, "keyboard", true));
                         else capture.Stop(Json.Has(c, "offset") ? Json.Str(c, "side", null) : null, Json.Num(c, "offset", 0));
                         break;
                     case "place":

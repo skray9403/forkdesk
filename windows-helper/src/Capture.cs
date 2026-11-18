@@ -15,6 +15,10 @@ namespace MacShare
 {
     partial class Capture
     {
+        // Program wires this to the lazily started crash-recovery process. Every entry path to
+        // mouse capture (including an edge crossing) must pass through it before hiding the cursor.
+        public Action EnsureCursorGuard;
+
         // config (kvmConfig)
 #if !MULTI
         public string Side;          // crossing side of this PC (null = unknown)
@@ -248,6 +252,7 @@ namespace MacShare
         public void Begin(bool mouse, bool keys)
         {
             if (capturing) { capMouse = mouse; capKeys = keys; return; }
+            if (mouse && EnsureCursorGuard != null) EnsureCursorGuard();
             mouseArrivalGuard = false;
             capturing = true; capMouse = mouse; capKeys = keys;
             CrossingReset();
