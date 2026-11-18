@@ -1240,5 +1240,12 @@
   "{other} is {where} {me}.": "{other}, {me} öğesinin {where} tarafında.",
   "Bluetooth fallback": "Bluetooth yedek bağlantısı",
   "After Wi-Fi or USB disconnects, searches nearby for 5 minutes. A Bluetooth session stays connected until Wi-Fi or USB returns.": "Wi-Fi veya USB bağlantısı kesildikten sonra 5 dakika boyunca yakındaki cihazları arar. Bir Bluetooth oturumu kurulursa Wi-Fi veya USB yeniden bağlanana kadar sürer.",
-  "Dismiss quick actions": "Hızlı işlemleri kapat"
+  "Dismiss quick actions": "Hızlı işlemleri kapat",
+  "Arrange navigation": "Gezinmeyi düzenle",
+  "Collapsed": "Daraltıldı",
+  "Enter the computer’s IP address on your network.": "Bilgisayarın ağınızdaki IP adresini girin.",
+  "Expanded": "Genişletildi",
+  "Quick actions": "Hızlı işlemler",
+  "Refresh nearby": "Yakındaki cihazları yenile",
+  "Scan QR code": "QR kodunu tara"
 }
