@@ -1246,5 +1246,6 @@
   "Expanded": "已展开",
   "Quick actions": "快捷操作",
   "Refresh nearby": "刷新附近设备",
-  "Scan QR code": "扫描二维码"
+  "Scan QR code": "扫描二维码",
+  "Dismiss quick actions": "关闭快捷操作"
 }
