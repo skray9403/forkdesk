@@ -26,7 +26,15 @@ jobs:
           dotnet-version: '10.0.x'
       - name: Test native core
         working-directory: windows-native
-        run: dotnet test Tests/TwinDesk.Native.Tests.csproj --configuration Release
+        run: dotnet test Tests/TwinDesk.Native.Tests.csproj --configuration Release --logger "trx;LogFileName=native-core.trx" --results-directory TestResults
+      - name: Upload native core test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-core-test-results
+          path: windows-native/TestResults/*.trx
+          if-no-files-found: ignore
+          retention-days: 14
 
   build:
     runs-on: windows-2022
@@ -40,11 +48,34 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
+
       - name: Restore x64
         run: dotnet restore TwinDesk.Native.csproj -r win-x64
-      - name: Build x64
-        run: dotnet build TwinDesk.Native.csproj --configuration Release --no-restore -r win-x64 -p:Platform=x64 --self-contained false
+      - name: Publish x64
+        run: dotnet publish TwinDesk.Native.csproj --configuration Release --no-restore -r win-x64 -p:Platform=x64 --self-contained false -o artifacts/win-x64
+      - name: Package x64
+        shell: pwsh
+        run: Compress-Archive -Path artifacts/win-x64/* -DestinationPath artifacts/TwinDesk-windows-x64.zip -Force
+
       - name: Restore ARM64
         run: dotnet restore TwinDesk.Native.csproj -r win-arm64
-      - name: Build ARM64
-        run: dotnet build TwinDesk.Native.csproj --configuration Release --no-restore -r win-arm64 -p:Platform=ARM64 --self-contained false
+      - name: Publish ARM64
+        run: dotnet publish TwinDesk.Native.csproj --configuration Release --no-restore -r win-arm64 -p:Platform=ARM64 --self-contained false -o artifacts/win-arm64
+      - name: Package ARM64
+        shell: pwsh
+        run: Compress-Archive -Path artifacts/win-arm64/* -DestinationPath artifacts/TwinDesk-windows-arm64.zip -Force
+
+      - name: Upload x64 build
+        uses: actions/upload-artifact@v4
+        with:
+          name: TwinDesk-Windows-x64
+          path: windows-native/artifacts/TwinDesk-windows-x64.zip
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload ARM64 build
+        uses: actions/upload-artifact@v4
+        with:
+          name: TwinDesk-Windows-ARM64
+          path: windows-native/artifacts/TwinDesk-windows-arm64.zip
+          if-no-files-found: error
+          retention-days: 30
