@@ -72,9 +72,13 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.animation.core.FiniteAnimationSpec
+import androidx.compose.animation.core.spring
+import androidx.compose.material3.MaterialExpressiveTheme
+import androidx.compose.material3.MotionScheme
+import androidx.compose.material3.ShortNavigationBar
+import androidx.compose.material3.ShortNavigationBarItem
+import androidx.compose.material3.ShortNavigationBarItemDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Scrim
 import androidx.compose.material3.ToggleFloatingActionButton
@@ -166,6 +170,15 @@ class MainActivity : ComponentActivity() {
         val openTab = mutableStateOf<String?>(null) // a page to open (Tab's name), from a notification
     }
 }
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+private val NavigationMotionScheme: MotionScheme =
+    object : MotionScheme by MotionScheme.expressive() {
+        // Expressive Clock's dock uses a 600-stiffness, 0.84-damping spring for its
+        // selected indicator. Keep that character local to navigation, not app-wide.
+        override fun <T> defaultSpatialSpec(): FiniteAnimationSpec<T> =
+            spring(dampingRatio = 0.84f, stiffness = 600f)
+    }
 
 private fun grad(a: Long, b: Long) = listOf(Color(a), Color(b))
 
@@ -526,30 +539,41 @@ fun App(core: Core, resumed: Int) {
                             tonalElevation = 2.dp,
                             shadowElevation = 4.dp,
                         ) {
-                            NavigationBar(
-                                modifier = Modifier.fillMaxWidth(),
-                                containerColor = Color.Transparent,
-                                tonalElevation = 0.dp,
-                                windowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
+                            MaterialExpressiveTheme(
+                                colorScheme = MaterialTheme.colorScheme,
+                                motionScheme = NavigationMotionScheme,
+                                shapes = MaterialTheme.shapes,
+                                typography = MaterialTheme.typography,
                             ) {
-                                val item = @Composable { label: String, icon: ImageVector, selected: Boolean, dot: Boolean, go: () -> Unit ->
-                                    NavigationBarItem(
-                                        selected = selected, onClick = go,
-                                        icon = {
-                                            Box {
-                                                Icon(icon, label, modifier = Modifier.size(24.dp))
-                                                if (dot) Box(Modifier.align(Alignment.TopEnd).offset(x = 4.dp, y = (-2).dp)) { Dot(pal.good, 7) }
-                                            }
-                                        },
-                                        label = { Text(label, maxLines = 1, softWrap = false, fontSize = 12.sp, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium) },
-                                        colors = NavigationBarItemDefaults.colors(
-                                            selectedIconColor = pal.accent, selectedTextColor = pal.text, indicatorColor = pal.accentSoft,
-                                            unselectedIconColor = pal.muted, unselectedTextColor = pal.muted,
-                                        ),
-                                    )
+                                ShortNavigationBar(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    containerColor = Color.Transparent,
+                                    contentColor = MaterialTheme.colorScheme.onSurface,
+                                    windowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
+                                ) {
+                                    val item = @Composable { label: String, icon: ImageVector, selected: Boolean, dot: Boolean, go: () -> Unit ->
+                                        ShortNavigationBarItem(
+                                            selected = selected, onClick = go,
+                                            icon = {
+                                                Box {
+                                                    Icon(icon, label, modifier = Modifier.size(24.dp))
+                                                    if (dot) Box(Modifier.align(Alignment.TopEnd).offset(x = 4.dp, y = (-2).dp)) { Dot(pal.good, 7) }
+                                                }
+                                            },
+                                            label = { Text(label, maxLines = 1, softWrap = false, fontSize = 12.sp, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium) },
+                                            colors = ShortNavigationBarItemDefaults.colors(
+                                                selectedIconColor = pal.accent,
+                                                selectedTextColorTopIconPosition = pal.text,
+                                                selectedTextColorStartIconPosition = pal.text,
+                                                selectedIndicatorColor = pal.accentSoft,
+                                                unselectedIconColor = pal.muted,
+                                                unselectedTextColor = pal.muted,
+                                            ),
+                                        )
+                                    }
+                                    for (t in BOTTOM) item(if (t == Tab.Connection) tr("Connect") else tr(t.title), t.icon, !more && tab == t, isOn(core, t)) { go(t, false) }
+                                    item(tr("More"), Ico.more, more || tab !in BOTTOM, false) { go(tab, true) }
                                 }
-                                for (t in BOTTOM) item(if (t == Tab.Connection) tr("Connect") else tr(t.title), t.icon, !more && tab == t, isOn(core, t)) { go(t, false) }
-                                item(tr("More"), Ico.more, more || tab !in BOTTOM, false) { go(tab, true) }
                             }
                         }
                         if (NavOrder.searchButton(core.store)) { // Arrange › Search button
@@ -557,6 +581,7 @@ fun App(core: Core, resumed: Int) {
                             FloatingActionButton(
                                 onClick = { Search.open.value = true },
                                 modifier = Modifier.size(56.dp),
+                                shape = CircleShape,
                                 containerColor = MaterialTheme.colorScheme.surfaceContainer,
                                 contentColor = MaterialTheme.colorScheme.onSurface,
                             ) {
