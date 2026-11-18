@@ -41,6 +41,7 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.material3.Slider
@@ -101,6 +102,9 @@ private val Dark = Palette(
 )
 
 val LocalPalette = staticCompositionLocalOf { Light }
+
+// A detail destination supplies this callback so its standard page heading can expose Back.
+val LocalPageBack = staticCompositionLocalOf<(() -> Unit)? > { null }
 val pal: Palette @Composable get() = LocalPalette.current
 
 // The look (General › Appearance, as on the computers: shared/look.js): the theme (system, light,
@@ -373,12 +377,22 @@ fun LanguageCard(core: Core) {
 
 @Composable
 fun PageHead(title: String, desc: String, master: Boolean? = null, onMaster: (Boolean) -> Unit = {}) {
+    val pageBack = LocalPageBack.current
     Row(
         modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (pageBack != null) {
+            IconButton(onClick = pageBack) {
+                Icon(Ico.left, contentDescription = tr("Back"))
+            }
+        }
         Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.headlineSmall)
+            Text(
+                title,
+                style = if (pageBack != null) MaterialTheme.typography.titleLarge
+                else MaterialTheme.typography.headlineSmall,
+            )
             if (desc.isNotEmpty()) {
                 Text(
                     desc,
