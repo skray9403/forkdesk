@@ -570,7 +570,7 @@ fun App(core: Core, resumed: Int) {
         if (!wide && (fabMenuExpanded || fabMenuScrimAlpha > 0f)) {
             Scrim(
                 contentDescription = tr("Dismiss quick actions"),
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize().safeDrawingPadding(),
                 onClick = { fabMenuExpanded = false },
                 alpha = { fabMenuScrimAlpha },
                 color = MaterialTheme.colorScheme.surface,
