@@ -1240,5 +1240,12 @@
   "{other} is {where} {me}.": "{other} está {where} de {me}.",
   "Bluetooth fallback": "Conexão Bluetooth de reserva",
   "After Wi-Fi or USB disconnects, searches nearby for 5 minutes. A Bluetooth session stays connected until Wi-Fi or USB returns.": "Após a desconexão do Wi-Fi ou USB, procura dispositivos próximos por 5 minutos. Uma sessão Bluetooth conectada permanece ativa até que o Wi-Fi ou USB volte.",
-  "Dismiss quick actions": "Fechar ações rápidas"
+  "Dismiss quick actions": "Fechar ações rápidas",
+  "Arrange navigation": "Organizar navegação",
+  "Collapsed": "Recolhido",
+  "Enter the computer’s IP address on your network.": "Digite o endereço IP do computador na sua rede.",
+  "Expanded": "Expandido",
+  "Quick actions": "Ações rápidas",
+  "Refresh nearby": "Atualizar dispositivos próximos",
+  "Scan QR code": "Ler código QR"
 }
