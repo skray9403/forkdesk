@@ -20,13 +20,31 @@ internal sealed record PeerBeacon
         try
         {
             beacon = JsonSerializer.Deserialize<PeerBeacon>(utf8);
-            return beacon is not null
-                && beacon.Version == ProtocolV1.Version
-                && !string.IsNullOrWhiteSpace(beacon.Id)
-                && PeerPlatformPolicy.TryParseWireId(beacon.Os, out _)
-                && beacon.Type is ProtocolV1.Message.Beacon
-                    or ProtocolV1.Message.Invite
-                    or ProtocolV1.Message.Probe;
+            if (beacon is null || beacon.Version != ProtocolV1.Version ||
+                string.IsNullOrWhiteSpace(beacon.Id))
+                return false;
+
+            // A probe is a request, not a peer record. Android uses role=guest for its
+            // ordinary computer discovery beacon. Ignore phone-to-phone advertisements
+            // and any platform outside this Windows product's allow-list.
+            if (beacon.Type == ProtocolV1.Message.Probe)
+                return true;
+
+            if (beacon.Type is not (ProtocolV1.Message.Beacon or ProtocolV1.Message.Invite))
+                return false;
+
+            if (!PeerPlatformPolicy.TryParseWireId(beacon.Os, out _))
+                return false;
+
+            if (beacon.Os == ProtocolV1.PeerOs.Android &&
+                !string.Equals(beacon.Role, "guest", StringComparison.Ordinal))
+                return false;
+
+            if (beacon.Os == ProtocolV1.PeerOs.Windows &&
+                !string.Equals(beacon.Role, "host", StringComparison.Ordinal))
+                return false;
+
+            return true;
         }
         catch (JsonException)
         {
