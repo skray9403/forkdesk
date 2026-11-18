@@ -25,6 +25,7 @@ namespace MacShare
         static readonly BlockingCollection<string> outbox = new BlockingCollection<string>();
         static Control invoker;
         static Capture capture;
+        static bool cursorGuardStarted;
         static Injector injector;
         static Stylus stylus; // a phone's stylus (Stylus.cs)
         static Touch touch; // a viewer's fingers (Touch.cs)
@@ -78,9 +79,9 @@ namespace MacShare
             if (!agent) UsbWatch.Init(Emit); // USB plug/unplug events for adb phones (UsbWatch.cs)
             HideCursor.PrepareRecovery();
             HideCursor.RecoverIfAlone();
-            if (agent) HideCursor.Unguarded = true; // no guard process for the agent, as before
-            else StartCursorGuard();
-            HideCursor.WaitForGuard();
+            if (agent) HideCursor.Unguarded = true; // the Full KVM agent already runs outside the helper guard
+            // The recovery guard is launched only when mouse sharing first hides the system cursor.
+            // Ordinary tray/background use therefore needs no second helper process.
             capture.Start();
             capture.Flash = new Flash();
             if (!agent) AppWindows.Watch(delegate { Dictionary<string, object> e = new Dictionary<string, object>(); e["event"] = "winShown"; Emit(e); }); // Menus
@@ -113,6 +114,14 @@ namespace MacShare
         // Started with ShellExecute: it
         // inherits none of our handles (the app's pipes see us close at once) and, as Node's job allows
         // silent breakaway, it is outside that job and lives on when the job is killed.
+        static void EnsureCursorGuard()
+        {
+            if (HideCursor.Unguarded || cursorGuardStarted) return;
+            cursorGuardStarted = true;
+            StartCursorGuard();
+            HideCursor.WaitForGuard();
+        }
+
         static void StartCursorGuard()
         {
             try
@@ -320,7 +329,12 @@ namespace MacShare
                     case "crossingFlags": capture.RemoteCrossingBits = (int)Json.Num(c, "flags", 0) & 15; break;
                     case "emergencyActive": capture.SetEmergencyActive(Json.Bool(c, "on", false)); break;
                     case "capture":
-                        if (Json.Bool(c, "on", false)) capture.Begin(Json.Bool(c, "mouse", true), Json.Bool(c, "keyboard", true));
+                        if (Json.Bool(c, "on", false))
+                        {
+                            bool mouse = Json.Bool(c, "mouse", true);
+                            if (mouse) EnsureCursorGuard();
+                            capture.Begin(mouse, Json.Bool(c, "keyboard", true));
+                        }
                         else capture.Stop(Json.Has(c, "offset") ? Json.Str(c, "side", null) : null, Json.Num(c, "offset", 0));
                         break;
                     case "place":

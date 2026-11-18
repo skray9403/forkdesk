@@ -162,8 +162,15 @@ namespace MacShare
                 pad.Active = capturing && capMouse && Gestures;
                 pad.OnRaw(buf, header);
             });
-            timer.Interval = 100;
-            timer.Tick += delegate { Tick(); };
+            // The helper remains resident for edge/input services. At rest, poll at 4 Hz rather
+            // than 10 Hz; keep the original 100 ms cadence while input is being captured.
+            timer.Interval = 250;
+            timer.Tick += delegate
+            {
+                Tick();
+                int wanted = capturing ? 100 : 250;
+                if (timer.Interval != wanted) timer.Interval = wanted;
+            };
             timer.Start();
         }
 

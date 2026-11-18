@@ -18,6 +18,14 @@ For returning users, the full renderer is no longer created automatically at app
 
 The main Electron window is still Electron when opened. This stage reduces **idle resident UI cost**, not the installed package size; Electron is still required for the complete feature UI.
 
+## Idle helper reductions
+
+The native helper is also tuned for its long-lived tray state:
+
+- Its periodic capture, secure-desktop, and cursor-recovery tick runs every 250 ms while idle (4 Hz), and returns to the existing 100 ms cadence during active capture. Input hooks and raw-input delivery remain event-driven; this timer change does not throttle mouse events.
+- The cursor crash-recovery guard is not started at application startup. It is started immediately before the first mouse capture that may hide the Windows system cursor, and the helper waits for the guard's ready signal before hiding it. Keyboard-only capture does not start the guard. Full KVM's separate agent retains its existing unguarded behavior.
+- These are reductions in idle polling and idle process count, not measured benchmark results. Verify on the same Windows machine with the same paired/idle state before claiming a numeric CPU or memory saving.
+
 ## Full native UI direction
 
 A complete native rewrite is a separate project, not a safe one-commit swap. The current Windows UI contains feature pages and IPC surfaces for pairing, phone integration, screen sharing, remote input, files, clipboard, audio, notifications, camera, and Mesh. Replacing only the window framework without porting those contracts would make a smaller but incomplete client.
