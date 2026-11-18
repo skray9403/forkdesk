@@ -311,9 +311,6 @@ function start() {
     if (!sound) link.send({ t: P.T.AUDIO_POLICY, accept: false });
   });
   if (settings.audio.send || settings.audio.receive) loadSound();
-  // Keep SSH_KEY / SSH_FORGET subscribed even while incoming-terminal access is off. Sshd skips
-  // its PowerShell service probe until the feature is enabled or an existing key needs cleanup.
-  loadSshd();
   link.setPlain(settings.files.plain === true); // Files › Encrypt file transfers
   if (settings.drive.on) loadDrive();
   // The files engine (shared/fx2.js) stays up while another TwinDesk computer is on the network: a
@@ -366,6 +363,9 @@ function start() {
     isQuitting: () => quitting,
   });
   loadTerminal(); // only while it's on
+  // Keep SSH_KEY / SSH_FORGET subscribed even while incoming-terminal access is off. Sshd skips
+  // its PowerShell service probe until the feature is enabled or an existing key needs cleanup.
+  loadSshd();
   fileDrop = new FileDrop({ link, settings, outboxFile: path.join(app.getPath('userData'), 'outbox.json'), peer: () => { const v = link.snapshot().session; return v ? { id: v.id || v.name || '', name: v.name || '' } : null; }, onProgress: (v) => { screen.sendDropProgress({ ...v, peerName: peerName() }); pushState(); } });
   {
     const { LocalApi } = require('../shared/localapi.js');
