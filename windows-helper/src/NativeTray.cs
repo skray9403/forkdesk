@@ -156,7 +156,7 @@ namespace MacShare
             flyout.Size = new Size(372, 620);
             flyout.KeyDown += delegate(object sender, KeyEventArgs e)
             {
-                if (e.KeyCode == Keys.Escape)
+                if (e.KeyCode == System.Windows.Forms.Keys.Escape)
                 {
                     e.Handled = true;
                     flyout.Close();
