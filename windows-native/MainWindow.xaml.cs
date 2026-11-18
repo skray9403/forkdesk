@@ -49,6 +49,7 @@ public sealed partial class MainWindow : Window
         {
             case "overview": ContentFrame.Navigate(typeof(OverviewPage), _core); break;
             case "android": ContentFrame.Navigate(typeof(AndroidPage), _core); break;
+            case "clipboard": ContentFrame.Navigate(typeof(ClipboardPage), _core); break;
             case "settings": ContentFrame.Navigate(typeof(SettingsPage)); break;
             default: ContentFrame.Navigate(typeof(FeaturePage), tag); break;
         }

@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using Microsoft.UI.Xaml;
 using TwinDesk.Native.Core;
 using TwinDesk.Native.Core.Discovery;
+using TwinDesk.Native.Services;
 
 namespace TwinDesk.Native;
 
@@ -27,7 +28,7 @@ public partial class App : Application
                 DeviceId = identity.Id,
                 DeviceName = identity.Name,
                 Fingerprint = identity.Fingerprint
-            });
+            }, new WindowsClipboardAdapter());
 
             _window = new MainWindow(_core);
             _window.Closed += async (_, _) => await ShutdownAsync();

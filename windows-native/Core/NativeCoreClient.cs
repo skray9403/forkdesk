@@ -8,6 +8,7 @@ public sealed class NativeCoreClient : INativeCoreClient
     private readonly PeerDiscoveryService _discovery;
     private readonly NativePeerHost _host;
     private readonly NativeFirewallAccessService _firewall = new();
+    private readonly ClipboardSyncService? _clipboard;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private bool _started;
     private bool _disposed;
@@ -17,7 +18,7 @@ public sealed class NativeCoreClient : INativeCoreClient
 
     public event EventHandler<NativeCoreSnapshot>? SnapshotChanged;
 
-    public NativeCoreClient(NativeIdentity identity, string dataDirectory, DiscoveryOptions? options = null)
+    public NativeCoreClient(NativeIdentity identity, string dataDirectory, DiscoveryOptions? options = null, IClipboardAdapter? clipboardAdapter = null)
     {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentException.ThrowIfNullOrWhiteSpace(dataDirectory);
@@ -34,6 +35,12 @@ public sealed class NativeCoreClient : INativeCoreClient
         _discovery.PeersChanged += (_, _) => Publish();
         _discovery.StatusChanged += (_, status) => Publish(status);
         _host.StateChanged += OnHostStateChanged;
+        _host.AuthenticatedMessageReceived += HandlePeerMessageAsync;
+        if (clipboardAdapter is not null)
+        {
+            _clipboard = new ClipboardSyncService(clipboardAdapter, dataDirectory, SendClipboardMessageAsync);
+            _clipboard.SnapshotChanged += (_, _) => Publish();
+        }
     }
 
     public async Task StartAsync(CancellationToken cancellationToken = default)
@@ -107,6 +114,28 @@ public sealed class NativeCoreClient : INativeCoreClient
         return Task.CompletedTask;
     }
 
+    public async Task SetClipboardOptionsAsync(ClipboardSyncOptions options, CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        if (_clipboard is null)
+            throw new InvalidOperationException("The Windows clipboard adapter is not available.");
+        await _clipboard.SetOptionsAsync(options, cancellationToken).ConfigureAwait(false);
+        Publish();
+    }
+
+    private Task<bool> SendClipboardMessageAsync(string message, CancellationToken cancellationToken) =>
+        _host.SendToActiveSessionAsync(message, cancellationToken);
+
+    private Task HandlePeerMessageAsync(PairedDevice device, string type, System.Text.Json.JsonElement message) =>
+        _clipboard is null ? Task.CompletedTask : _clipboard.HandlePeerMessageAsync(type, message);
+
+    private async Task UpdateClipboardSessionAsync(bool connected)
+    {
+        if (_clipboard is null) return;
+        try { await _clipboard.SetSessionActiveAsync(connected).ConfigureAwait(false); }
+        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Clipboard session update failed: {ex}"); }
+    }
+
     public async Task<bool> ForgetDeviceAsync(string deviceId, CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -129,7 +158,11 @@ public sealed class NativeCoreClient : INativeCoreClient
         return _host.DisconnectAsync(cancellationToken);
     }
 
-    private void OnHostStateChanged() => Publish();
+    private void OnHostStateChanged()
+    {
+        _ = UpdateClipboardSessionAsync(_host.ConnectedDevice is not null);
+        Publish();
+    }
 
     private NativeCoreSnapshot CreateSnapshot()
     {
@@ -147,7 +180,7 @@ public sealed class NativeCoreClient : INativeCoreClient
         return new NativeCoreSnapshot(
             _started, _status, nearbyPeers, _host.IsListening, _hostStatus,
             _host.PendingPairing, _host.PairedDevices, _host.ConnectedDevice,
-            _firewallStatus.IsAllowed, _firewallStatus.Message);
+            _firewallStatus.IsAllowed, _firewallStatus.Message, _clipboard?.Snapshot);
     }
 
     private void Publish(string? status = null)
@@ -166,6 +199,7 @@ public sealed class NativeCoreClient : INativeCoreClient
             _disposed = true;
             _started = false;
             _status = "Stopped";
+            _clipboard?.Dispose();
             await _host.DisposeAsync().ConfigureAwait(false);
             await _discovery.DisposeAsync().ConfigureAwait(false);
             Publish();
