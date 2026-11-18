@@ -12,6 +12,12 @@ import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -37,6 +43,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -52,6 +59,10 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.Badge
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonMenu
+import androidx.compose.material3.FloatingActionButtonMenuItem
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.RowScope
@@ -63,6 +74,9 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.Surface
+import androidx.compose.material3.ToggleFloatingActionButton
+import androidx.compose.material3.ToggleFloatingActionButtonDefaults.animateIcon
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
@@ -71,6 +85,8 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -91,6 +107,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -245,6 +263,7 @@ private fun them(core: Core) = core.host?.name ?: core.hosts().firstOrNull()?.na
 // is on Bluetooth, saying so, with Connect with Wi-Fi Direct (WifiGate).
 private fun wifiOnly(core: Core, t: Tab) = (t == Tab.Sound || t == Tab.Photos) && core.host != null && core.link.ble
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun App(core: Core, resumed: Int) {
     val v by core.version.collectAsState()
@@ -260,11 +279,15 @@ fun App(core: Core, resumed: Int) {
     @Suppress("UNUSED_EXPRESSION") NavOrder.version.intValue // redraw when arranged
     val BOTTOM = bottom(core).filter { core.moduleOn(it.name.lowercase()) } // General › Modules
     var more by rememberSaveable { mutableStateOf(false) }
+    var fabMenuExpanded by rememberSaveable { mutableStateOf(false) }
     MainActivity.openTab.value?.let { name ->
         Tab.entries.firstOrNull { it.name == name }?.takeIf { shown(core, it) }?.let { tab = it; more = false }
         MainActivity.openTab.value = null
     }
     val wide = LocalConfiguration.current.screenWidthDp >= 600
+    val motionScheme = MaterialTheme.motionScheme
+    val pageSpatialSpec = motionScheme.defaultSpatialSpec<androidx.compose.ui.unit.IntOffset>()
+    val pageEffectsSpec = motionScheme.fastEffectsSpec<Float>()
     // Wireless debugging went off (MIUI / HyperOS): ask once per time it happens.
     var adbAsked by rememberSaveable { mutableStateOf(false) }
     if (!core.adb.off) adbAsked = false
@@ -369,53 +392,181 @@ fun App(core: Core, resumed: Int) {
                     tab = t; more = m
                 }
             }
-            androidx.activity.compose.BackHandler(enabled = history.isNotEmpty()) {
-                var back = history.removeAt(history.lastIndex)
-                while (!shown(core, back.first) && history.isNotEmpty()) back = history.removeAt(history.lastIndex) // Overview after a disconnect
-                if (shown(core, back.first)) { tab = back.first; more = back.second }
+            val goBack = {
+                if (history.isNotEmpty()) {
+                    var previous = history.removeAt(history.lastIndex)
+                    while (!shown(core, previous.first) && history.isNotEmpty()) {
+                        previous = history.removeAt(history.lastIndex)
+                    }
+                    if (shown(core, previous.first)) {
+                        tab = previous.first
+                        more = previous.second
+                    } else if (tab !in BOTTOM) {
+                        tab = BOTTOM.firstOrNull() ?: Tab.Connection
+                        more = true
+                    }
+                } else {
+                    tab = BOTTOM.firstOrNull() ?: Tab.Connection
+                    more = true
+                }
+            }
+            androidx.activity.compose.BackHandler(enabled = history.isNotEmpty() || tab !in BOTTOM) {
+                goBack()
+            }
+            androidx.activity.compose.BackHandler(enabled = fabMenuExpanded) {
+                fabMenuExpanded = false
             }
             Column(Modifier.safeDrawingPadding()) {
                 if (!more && tab == BOTTOM.first()) TopIdentity(core, v) // TwinDesk on the main page only
                 else Spacer(Modifier.height(10.dp))
-                // The feature content and standard Material navigation bar.
+                // Keep navigation anchored while the destination uses Material's expressive motion.
                 Column(Modifier.weight(1f).fillMaxWidth().background(pal.sheet)) {
-                if (more) MoreList(core, v, BOTTOM, Modifier.weight(1f)) { go(it, false) }
-                else Page(core, v, resumed, tab, Modifier.weight(1f))
-                // Standard Material navigation. Search remains a separate action; holding the bar opens Arrange.
-                Row(Modifier.padding(start = 14.dp, end = 14.dp, bottom = 10.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                NavigationBar(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                    tonalElevation = 0.dp,
-                    windowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
-                    modifier = Modifier.weight(1f).onHold { NavOrder.open.value = true },
-                ) {
-                    val item = @Composable { label: String, icon: ImageVector, selected: Boolean, dot: Boolean, go: () -> Unit ->
-                        NavigationBarItem(
-                            selected = selected, onClick = go,
-                            icon = {
-                                Box {
-                                    Icon(icon, label, modifier = Modifier.size(24.dp))
-                                    if (dot) Box(Modifier.align(Alignment.TopEnd).offset(x = 4.dp, y = (-2).dp)) { Dot(pal.good, 7) }
+                    AnimatedContent(
+                        targetState = more to tab,
+                        modifier = Modifier.weight(1f).fillMaxWidth(),
+                        label = "TwinDesk destinations",
+                        transitionSpec = {
+                            val enteringDetail = initialState.first && !targetState.first && targetState.second !in BOTTOM
+                            val returningToMore = !initialState.first && targetState.first && initialState.second !in BOTTOM
+                            when {
+                                enteringDetail -> (
+                                    slideInHorizontally(
+                                        initialOffsetX = { it / 8 },
+                                        animationSpec = pageSpatialSpec,
+                                    ) + fadeIn(animationSpec = pageEffectsSpec)
+                                ) togetherWith (
+                                    slideOutHorizontally(
+                                        targetOffsetX = { -it / 8 },
+                                        animationSpec = pageSpatialSpec,
+                                    ) + fadeOut(animationSpec = pageEffectsSpec)
+                                )
+                                returningToMore -> (
+                                    slideInHorizontally(
+                                        initialOffsetX = { -it / 8 },
+                                        animationSpec = pageSpatialSpec,
+                                    ) + fadeIn(animationSpec = pageEffectsSpec)
+                                ) togetherWith (
+                                    slideOutHorizontally(
+                                        targetOffsetX = { it / 8 },
+                                        animationSpec = pageSpatialSpec,
+                                    ) + fadeOut(animationSpec = pageEffectsSpec)
+                                )
+                                else -> fadeIn(animationSpec = pageEffectsSpec) togetherWith
+                                    fadeOut(animationSpec = pageEffectsSpec)
+                            }
+                        },
+                    ) { destination ->
+                        val (showMore, pageTab) = destination
+                        if (showMore) {
+                            MoreList(core, v, BOTTOM, Modifier.fillMaxSize()) { go(it, false) }
+                        } else {
+                            CompositionLocalProvider(
+                                LocalPageBack provides if (pageTab !in BOTTOM) goBack else null,
+                            ) {
+                                Page(core, v, resumed, pageTab, Modifier.fillMaxSize())
+                            }
+                        }
+                    }
+                    // Photos-style floating navigation pill, using the stock Material NavigationBar.
+                    Row(
+                        Modifier.padding(start = 14.dp, end = 14.dp, bottom = 10.dp, top = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Surface(
+                            modifier = Modifier.weight(1f).onHold { NavOrder.open.value = true },
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.surfaceContainer,
+                            tonalElevation = 2.dp,
+                            shadowElevation = 4.dp,
+                        ) {
+                            NavigationBar(
+                                modifier = Modifier.fillMaxWidth(),
+                                containerColor = Color.Transparent,
+                                tonalElevation = 0.dp,
+                                windowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
+                            ) {
+                                val item = @Composable { label: String, icon: ImageVector, selected: Boolean, dot: Boolean, go: () -> Unit ->
+                                    NavigationBarItem(
+                                        selected = selected, onClick = go,
+                                        icon = {
+                                            Box {
+                                                Icon(icon, label, modifier = Modifier.size(24.dp))
+                                                if (dot) Box(Modifier.align(Alignment.TopEnd).offset(x = 4.dp, y = (-2).dp)) { Dot(pal.good, 7) }
+                                            }
+                                        },
+                                        label = { Text(label, maxLines = 1, softWrap = false, fontSize = 12.sp, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium) },
+                                        colors = NavigationBarItemDefaults.colors(
+                                            selectedIconColor = pal.accent, selectedTextColor = pal.text, indicatorColor = pal.accentSoft,
+                                            unselectedIconColor = pal.muted, unselectedTextColor = pal.muted,
+                                        ),
+                                    )
                                 }
-                            },
-                            label = { Text(label, maxLines = 1, softWrap = false, fontSize = 12.sp, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium) },
-                            colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = pal.accent, selectedTextColor = pal.text, indicatorColor = pal.accentSoft,
-                                unselectedIconColor = pal.muted, unselectedTextColor = pal.muted,
-                            ),
+                                for (t in BOTTOM) item(if (t == Tab.Connection) tr("Connect") else tr(t.title), t.icon, !more && tab == t, isOn(core, t)) { go(t, false) }
+                                item(tr("More"), Ico.more, more || tab !in BOTTOM, false) { go(tab, true) }
+                            }
+                        }
+                        if (NavOrder.searchButton(core.store)) { // Arrange › Search button
+                            Spacer(Modifier.width(10.dp))
+                            FloatingActionButton(
+                                onClick = { Search.open.value = true },
+                                modifier = Modifier.size(56.dp),
+                                containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                                contentColor = MaterialTheme.colorScheme.onSurface,
+                            ) {
+                                Icon(Ico.search, contentDescription = tr("Search"))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if (!wide) {
+            FloatingActionButtonMenu(
+                expanded = fabMenuExpanded,
+                modifier = Modifier.align(Alignment.BottomEnd).padding(end = 18.dp, bottom = 108.dp),
+                button = {
+                    ToggleFloatingActionButton(
+                        modifier = Modifier.semantics {
+                            contentDescription = tr("Quick actions")
+                            stateDescription = if (fabMenuExpanded) tr("Expanded") else tr("Collapsed")
+                        },
+                        checked = fabMenuExpanded,
+                        onCheckedChange = { fabMenuExpanded = it },
+                    ) {
+                        val icon by remember {
+                            derivedStateOf { if (checkedProgress > 0.5f) Ico.close else Ico.plus }
+                        }
+                        Icon(
+                            icon,
+                            contentDescription = null,
+                            modifier = Modifier.animateIcon { checkedProgress },
                         )
                     }
-                    for (t in BOTTOM) item(if (t == Tab.Connection) tr("Connect") else tr(t.title), t.icon, !more && tab == t, isOn(core, t)) { go(t, false) }
-                    item(tr("More"), Ico.more, more || tab !in BOTTOM, false) { go(tab, true) }
-                }
-                if (NavOrder.searchButton(core.store)) { // Arrange › Search button
-                Spacer(Modifier.width(10.dp))
-                FilledTonalIconButton(onClick = { Search.open.value = true }) {
-                    Icon(Ico.search, contentDescription = tr("Search"))
-                }
-                }
-                }
-                }
+                },
+            ) {
+                FloatingActionButtonMenuItem(
+                    onClick = { fabMenuExpanded = false; scanQr(ctx) },
+                    icon = { Icon(Ico.camera, contentDescription = null) },
+                    text = { Text(tr("Scan QR code")) },
+                )
+                FloatingActionButtonMenuItem(
+                    onClick = { fabMenuExpanded = false; Search.open.value = true },
+                    icon = { Icon(Ico.search, contentDescription = null) },
+                    text = { Text(tr("Search features")) },
+                )
+                FloatingActionButtonMenuItem(
+                    onClick = {
+                        fabMenuExpanded = false
+                        Thread { runCatching { core.discovery.probe() } }.start()
+                    },
+                    icon = { Icon(Ico.link, contentDescription = null) },
+                    text = { Text(tr("Refresh nearby")) },
+                )
+                FloatingActionButtonMenuItem(
+                    onClick = { fabMenuExpanded = false; NavOrder.open.value = true },
+                    icon = { Icon(Ico.pencil, contentDescription = null) },
+                    text = { Text(tr("Arrange navigation")) },
+                )
             }
         }
     }
@@ -539,27 +690,43 @@ private fun TopIdentity(core: Core, v: Int) {
 private fun MoreList(core: Core, v: Int, BOTTOM: List<Tab>, modifier: Modifier, go: (Tab) -> Unit) {
     @Suppress("UNUSED_EXPRESSION") v
     val entries = ordered(core).filter { it !in BOTTOM && shown(core, it) }
-    Column(modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(20.dp)) {
-        PageHead(tr("More"), "")
+    val customOrder = NavOrder.load(core.store) != null
+    val sections = if (customOrder) {
+        listOf("" to entries)
+    } else {
+        entries.groupBy { if (it.group == "bottom") "System" else it.group }.toList()
+    }
+    Column(modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp)) {
         SearchField()
-        MacCard {
-            entries.forEachIndexed { index, tab ->
-                if (index > 0) HorizontalDivider(Modifier.padding(start = 56.dp))
-                ListItem(
-                    content = { Text(tr(tab.title)) },
-                    leadingContent = { Icon(tab.icon, contentDescription = null) },
-                    supportingContent = if (wifiOnly(core, tab)) {
-                        { Text(tr("Wi-Fi Direct"), style = MaterialTheme.typography.bodySmall) }
-                    } else null,
-                    trailingContent = {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            if (isOn(core, tab)) Badge(containerColor = MaterialTheme.colorScheme.tertiary)
-                            Icon(Ico.right, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    },
-                    modifier = Modifier.clickable { go(tab) },
-                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        Devices(core, v) { go(if (core.host != null || core.peer.connected) Tab.Overview else Tab.Connection) }
+        sections.forEach { (section, tabs) ->
+            if (section.isNotEmpty()) {
+                Text(
+                    tr(section),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 8.dp),
                 )
+            }
+            MacCard {
+                tabs.forEachIndexed { index, tab ->
+                    if (index > 0) HorizontalDivider(Modifier.padding(start = 56.dp))
+                    ListItem(
+                        content = { Text(tr(tab.title)) },
+                        leadingContent = { Icon(tab.icon, contentDescription = null) },
+                        supportingContent = if (wifiOnly(core, tab)) {
+                            { Text(tr("Wi-Fi Direct"), style = MaterialTheme.typography.bodySmall) }
+                        } else null,
+                        trailingContent = {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                if (isOn(core, tab)) Badge(containerColor = MaterialTheme.colorScheme.tertiary)
+                                Icon(Ico.right, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        },
+                        modifier = Modifier.clickable { go(tab) },
+                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                    )
+                }
             }
         }
     }
