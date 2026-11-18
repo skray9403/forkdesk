@@ -11,10 +11,11 @@ public sealed class ClipboardSyncServiceTests
     {
         var root = TempDirectory();
         using var adapter = new FakeAdapter();
-        using var service = Create(root, adapter, _ => Task.FromResult(true));
+        var sent = new List<string>();
+        using var service = Create(root, adapter, payload => { sent.Add(payload); return Task.FromResult(true); });
         Assert.False(service.Snapshot.Options.Enabled);
         await service.SetSessionActiveAsync(true);
-        using var policy = JsonDocument.Parse(adapter.Messages.Single());
+        using var policy = JsonDocument.Parse(sent.Single());
         Assert.False(policy.RootElement.GetProperty("accept").GetBoolean());
         Directory.Delete(root, true);
     }
@@ -113,7 +114,7 @@ public sealed class ClipboardSyncServiceTests
     {
         public event EventHandler? ContentChanged;
         public string? Text { get; private set; }
-        public List<string> Messages { get; } = [];
+
         public Task<string?> ReadTextAsync(CancellationToken cancellationToken = default) => Task.FromResult(Text);
         public Task WriteTextAsync(string text, CancellationToken cancellationToken = default)
         {
