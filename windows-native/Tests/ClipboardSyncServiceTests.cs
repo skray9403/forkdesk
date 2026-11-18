@@ -86,7 +86,7 @@ public sealed class ClipboardSyncServiceTests
     }
 
     private static ClipboardSyncService Create(string root, FakeAdapter adapter, Func<string, Task<bool>> send) =>
-        new(adapter, root, (payload, _) => send(payload));
+        new(adapter, root, "windows-test-device", (payload, _) => send(payload));
     private static JsonDocument Parse(string json) => JsonDocument.Parse(json);
     private static bool IsMessage(string json, string type)
     {

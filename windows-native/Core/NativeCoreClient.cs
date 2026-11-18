@@ -38,7 +38,7 @@ public sealed class NativeCoreClient : INativeCoreClient
         _host.AuthenticatedMessageReceived += HandlePeerMessageAsync;
         if (clipboardAdapter is not null)
         {
-            _clipboard = new ClipboardSyncService(clipboardAdapter, dataDirectory, SendClipboardMessageAsync);
+            _clipboard = new ClipboardSyncService(clipboardAdapter, dataDirectory, identity.Id, SendClipboardMessageAsync);
             _clipboard.SnapshotChanged += (_, _) => Publish();
         }
     }

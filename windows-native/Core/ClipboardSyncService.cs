@@ -27,6 +27,9 @@ public sealed class ClipboardSyncService : IDisposable
     private readonly IClipboardAdapter _adapter;
     private readonly string _settingsPath;
     private readonly Func<string, CancellationToken, Task<bool>> _sendMessage;
+    private readonly string _deviceId;
+    private long _clockLast;
+    private (long Ts, string Origin)? _latestStamp;
     private readonly SemaphoreSlim _localChangeGate = new(1, 1);
     private ClipboardSyncOptions _options;
     private bool _isConnected;
@@ -40,12 +43,14 @@ public sealed class ClipboardSyncService : IDisposable
 
     public event EventHandler<ClipboardSyncSnapshot>? SnapshotChanged;
 
-    public ClipboardSyncService(IClipboardAdapter adapter, string dataDirectory,
+    public ClipboardSyncService(IClipboardAdapter adapter, string dataDirectory, string deviceId,
         Func<string, CancellationToken, Task<bool>> sendMessage)
     {
         _adapter = adapter ?? throw new ArgumentNullException(nameof(adapter));
         ArgumentException.ThrowIfNullOrWhiteSpace(dataDirectory);
         _sendMessage = sendMessage ?? throw new ArgumentNullException(nameof(sendMessage));
+        ArgumentException.ThrowIfNullOrWhiteSpace(deviceId);
+        _deviceId = deviceId;
         Directory.CreateDirectory(dataDirectory);
         _settingsPath = Path.Combine(dataDirectory, "clipboard.json");
         _options = LoadOptions(_settingsPath);
@@ -123,8 +128,10 @@ public sealed class ClipboardSyncService : IDisposable
 
                 lock (_sync)
                 {
+                    var stamp = ReadIncomingStamp(message);
                     if (!_isConnected || !_options.Enabled || !_options.Receive ||
-                        string.Equals(_lastReceivedText, text, StringComparison.Ordinal))
+                        string.Equals(_lastReceivedText, text, StringComparison.Ordinal) ||
+                        !AcceptStampLocked(stamp.Ts, stamp.Origin))
                         break;
                     _lastReceivedText = text;
                     _lastSentText = null;
@@ -179,7 +186,13 @@ public sealed class ClipboardSyncService : IDisposable
                     string.Equals(_lastReceivedText, text, StringComparison.Ordinal))
                     return;
 
-            var payload = JsonSerializer.Serialize(new { t = ProtocolV1.Message.Clip, text });
+            long stamp;
+            lock (_sync)
+            {
+                stamp = NextStampLocked();
+                _latestStamp = (stamp, _deviceId);
+            }
+            var payload = JsonSerializer.Serialize(new { t = ProtocolV1.Message.Clip, text, ts = stamp, o = _deviceId });
             if (!await _sendMessage(payload, cancellationToken).ConfigureAwait(false)) return;
 
             lock (_sync)
@@ -192,6 +205,46 @@ public sealed class ClipboardSyncService : IDisposable
             Publish();
         }
         finally { _localChangeGate.Release(); }
+    }
+
+    private (long Ts, string Origin) ReadIncomingStamp(JsonElement message)
+    {
+        if (message.TryGetProperty("ts", out var tsElement) && tsElement.TryGetInt64(out var ts) &&
+            ts > 0 && ts < 9_007_199_254_740_992L &&
+            message.TryGetProperty("o", out var originElement) &&
+            originElement.ValueKind == JsonValueKind.String)
+        {
+            var origin = originElement.GetString();
+            if (!string.IsNullOrWhiteSpace(origin) && origin.Length <= 128)
+                return (Math.Min(ts, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + 600_000), origin);
+        }
+
+        var legacyOrigin = message.TryGetProperty("from", out var fromElement) &&
+                           fromElement.ValueKind == JsonValueKind.String
+            ? fromElement.GetString()
+            : null;
+        return (NextStampLocked(), string.IsNullOrWhiteSpace(legacyOrigin) ? "~peer" : legacyOrigin);
+    }
+
+    private long NextStampLocked()
+    {
+        var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        _clockLast = Math.Max(now, _clockLast + 1);
+        return _clockLast;
+    }
+
+    private bool AcceptStampLocked(long ts, string origin)
+    {
+        if (string.Equals(origin, _deviceId, StringComparison.Ordinal))
+            return false;
+        _clockLast = Math.Max(_clockLast, Math.Min(ts, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + 600_000));
+        if (_latestStamp is { } current)
+        {
+            if (ts < current.Ts || (ts == current.Ts && string.CompareOrdinal(origin, current.Origin) <= 0))
+                return false;
+        }
+        _latestStamp = (ts, origin);
+        return true;
     }
 
     private async Task SendPolicyAsync(CancellationToken cancellationToken)
