@@ -52,9 +52,8 @@ public partial class App : Application
 
     private static void ShowStartupError(string message) =>
         MessageBoxW(IntPtr.Zero,
-            $"TwinDesk could not initialize its native device identity or discovery service.
-
-{message}",
+            "TwinDesk could not initialize its native device identity or discovery service." +
+            Environment.NewLine + Environment.NewLine + message,
             "TwinDesk", 0x10);
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
