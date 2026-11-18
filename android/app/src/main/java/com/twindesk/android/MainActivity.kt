@@ -810,38 +810,138 @@ private fun MoreList(core: Core, v: Int, BOTTOM: List<Tab>, modifier: Modifier, 
         entries.groupBy { if (it.group == "bottom") "System" else it.group }.toList()
     }
     val scheme = MaterialTheme.colorScheme
+    val connectedName = core.host?.name
+        ?: core.peer.takeIf { it.connected }?.peerName
+    val connectionSummary = when {
+        connectedName != null -> tr("Connected to {name}", "name" to connectedName)
+        core.link.state == "connecting" || core.link.pair != null -> tr("Connecting…")
+        else -> tr("No device connected")
+    }
 
-    // Keep the search control fixed while the settings destinations scroll beneath it.
     Column(
-        modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 16.dp),
+        modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 14.dp),
     ) {
+        // A calmer, MonoMail-inspired hub header. Search stays pinned while destinations scroll.
+        Row(
+            Modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp, top = 4.dp, bottom = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    tr("Settings"),
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = scheme.onSurface,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    tr("Make TwinDesk work the way you do"),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = scheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 3.dp),
+                )
+            }
+            Surface(
+                shape = CircleShape,
+                color = scheme.secondaryContainer,
+                contentColor = scheme.onSecondaryContainer,
+            ) {
+                Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
+                    Icon(Ico.general, contentDescription = tr("Settings"), modifier = Modifier.size(22.dp))
+                }
+            }
+        }
         SearchField()
         Column(
             Modifier.weight(1f).fillMaxWidth()
                 .verticalScroll(rememberScrollState())
                 .padding(bottom = 20.dp),
         ) {
-            Devices(core, v) {
-                go(if (core.host != null || core.peer.connected) Tab.Overview else Tab.Connection)
+            // Device identity is the equivalent of MonoMail's account hero, without hiding status.
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 18.dp)
+                    .clickable {
+                        go(if (core.host != null || core.peer.connected) Tab.Overview else Tab.Connection)
+                    },
+                shape = MaterialTheme.shapes.extraLarge,
+                colors = CardDefaults.cardColors(containerColor = scheme.secondaryContainer),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+            ) {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 18.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(18.dp),
+                        color = scheme.surface.copy(alpha = 0.72f),
+                    ) {
+                        Box(Modifier.size(52.dp), contentAlignment = Alignment.Center) {
+                            Icon(
+                                if (connectedName == null) Ico.phone else Ico.display,
+                                contentDescription = null,
+                                tint = scheme.onSecondaryContainer,
+                                modifier = Modifier.size(26.dp),
+                            )
+                        }
+                    }
+                    Column(Modifier.weight(1f).padding(start = 14.dp, end = 8.dp)) {
+                        Text(
+                            connectedName ?: core.store.deviceName,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = scheme.onSecondaryContainer,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            connectionSummary,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = scheme.onSecondaryContainer.copy(alpha = 0.78f),
+                            modifier = Modifier.padding(top = 3.dp),
+                        )
+                    }
+                    Icon(
+                        Ico.right,
+                        contentDescription = tr("Open connection"),
+                        tint = scheme.onSecondaryContainer,
+                    )
+                }
             }
+
             sections.forEachIndexed { sectionIndex, (section, tabs) ->
                 if (section.isNotEmpty()) {
-                    Text(
-                        tr(section),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = scheme.onSurface,
-                        modifier = Modifier.padding(
+                    Row(
+                        Modifier.fillMaxWidth().padding(
                             start = 16.dp,
-                            top = if (sectionIndex == 0) 8.dp else 20.dp,
+                            end = 8.dp,
+                            top = if (sectionIndex == 0) 0.dp else 22.dp,
                             bottom = 8.dp,
                         ),
-                    )
-                } else if (sectionIndex > 0) {
-                    Spacer(Modifier.height(18.dp))
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            tr(section),
+                            style = MaterialTheme.typography.titleSmall,
+                            color = scheme.onSurfaceVariant,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Text(
+                            tabs.size.toString(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = scheme.outline,
+                        )
+                    }
                 }
-                MacCard {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.extraLarge,
+                    colors = CardDefaults.cardColors(containerColor = scheme.surfaceContainerLow),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                ) {
                     tabs.forEachIndexed { index, tab ->
-                        if (index > 0) HorizontalDivider(Modifier.padding(start = 68.dp))
+                        if (index > 0) HorizontalDivider(
+                            Modifier.padding(start = 72.dp, end = 16.dp),
+                            color = scheme.outlineVariant.copy(alpha = 0.62f),
+                        )
                         val (iconContainer, iconTint) = when (tab.group) {
                             "Phone" -> scheme.primaryContainer to scheme.onPrimaryContainer
                             "Display" -> scheme.secondaryContainer to scheme.onSecondaryContainer
@@ -851,21 +951,22 @@ private fun MoreList(core: Core, v: Int, BOTTOM: List<Tab>, modifier: Modifier, 
                             else -> scheme.surfaceContainerHigh to scheme.onSurfaceVariant
                         }
                         ListItem(
-                            content = { Text(tr(tab.title), style = MaterialTheme.typography.bodyLarge) },
+                            content = {
+                                Text(
+                                    tr(tab.title),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Medium,
+                                )
+                            },
                             leadingContent = {
-                                Surface(shape = CircleShape, color = iconContainer) {
-                                    Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
-                                        Icon(
-                                            tab.icon,
-                                            contentDescription = null,
-                                            tint = iconTint,
-                                            modifier = Modifier.size(21.dp),
-                                        )
+                                Surface(shape = RoundedCornerShape(14.dp), color = iconContainer) {
+                                    Box(Modifier.size(42.dp), contentAlignment = Alignment.Center) {
+                                        Icon(tab.icon, null, tint = iconTint, modifier = Modifier.size(21.dp))
                                     }
                                 }
                             },
                             supportingContent = if (wifiOnly(core, tab)) {
-                                { Text(tr("Wi-Fi Direct"), style = MaterialTheme.typography.bodyMedium) }
+                                { Text(tr("Wi-Fi Direct"), style = MaterialTheme.typography.bodySmall) }
                             } else null,
                             trailingContent = {
                                 Row(
@@ -873,20 +974,19 @@ private fun MoreList(core: Core, v: Int, BOTTOM: List<Tab>, modifier: Modifier, 
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 ) {
                                     if (isOn(core, tab)) Badge(containerColor = scheme.tertiary)
-                                    Icon(Ico.right, contentDescription = null, tint = scheme.onSurfaceVariant)
+                                    Icon(Ico.right, null, tint = scheme.onSurfaceVariant)
                                 }
                             },
-                            modifier = Modifier.clickable { go(tab) },
+                            modifier = Modifier.clickable { go(tab) }.padding(vertical = 2.dp),
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                         )
                     }
                 }
             }
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(12.dp))
         }
     }
 }
-
 @Composable
 private fun Page(core: Core, v: Int, resumed: Int, tab: Tab, modifier: Modifier) {
     @Suppress("UNUSED_EXPRESSION") v // redraw on every Core change (Compose skips unread parameters)
