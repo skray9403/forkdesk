@@ -14,6 +14,7 @@ import android.os.PowerManager
 import android.provider.Settings
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
@@ -75,16 +76,17 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.LargeTopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.Scaffold
 import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.spring
 import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.material3.MotionScheme
-import androidx.compose.material3.ShortNavigationBar
-import androidx.compose.material3.ShortNavigationBarItem
-import androidx.compose.material3.ShortNavigationBarItemDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Scrim
 import androidx.compose.material3.ToggleFloatingActionButton
@@ -533,14 +535,15 @@ fun App(core: Core, resumed: Int) {
                             }
                         }
                     }
-                    // MonoMail-inspired floating segmented dock, retaining stock M3 navigation
-                    // semantics and the existing expressive motion scheme.
+                    // MonoMail's segmented floating dock, adapted to TwinDesk's five destinations.
+                    // The selected pill and glyph retain the accepted expressive spring motion.
                     Row(
                         Modifier.padding(start = 14.dp, end = 14.dp, bottom = 10.dp, top = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Surface(
-                            modifier = Modifier.weight(1f).onHold { NavOrder.open.value = true },
+                            modifier = Modifier.weight(1f).height(64.dp)
+                                .onHold { NavOrder.open.value = true },
                             shape = CircleShape,
                             color = MaterialTheme.colorScheme.surfaceContainerHigh,
                             tonalElevation = 1.dp,
@@ -552,19 +555,48 @@ fun App(core: Core, resumed: Int) {
                                 shapes = MaterialTheme.shapes,
                                 typography = MaterialTheme.typography,
                             ) {
-                                ShortNavigationBar(
-                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp),
-                                    containerColor = Color.Transparent,
-                                    contentColor = MaterialTheme.colorScheme.onSurface,
-                                    windowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
+                                SingleChoiceSegmentedButtonRow(
+                                    modifier = Modifier.fillMaxSize().padding(horizontal = 6.dp, vertical = 6.dp),
+                                    space = 4.dp,
                                 ) {
-                                    val item = @Composable { label: String, icon: ImageVector, selected: Boolean, dot: Boolean, go: () -> Unit ->
-                                        ShortNavigationBarItem(
-                                            selected = selected, onClick = go,
+                                    val item = @Composable { label: String, icon: ImageVector, selected: Boolean, dot: Boolean, onClick: () -> Unit ->
+                                        val activeContainer by androidx.compose.animation.animateColorAsState(
+                                            targetValue = if (selected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent,
+                                            animationSpec = spring(dampingRatio = 0.84f, stiffness = 600f),
+                                            label = "dock selected container",
+                                        )
+                                        SegmentedButton(
+                                            selected = selected,
+                                            onClick = onClick,
+                                            shape = RoundedCornerShape(percent = 50),
+                                            modifier = Modifier.weight(1f),
+                                            colors = SegmentedButtonDefaults.colors(
+                                                activeContainerColor = activeContainer,
+                                                activeContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                                                inactiveContainerColor = activeContainer,
+                                                inactiveContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            ),
+                                            border = SegmentedButtonDefaults.borderStroke(color = Color.Transparent),
                                             icon = {
-                                                Box {
-                                                    Icon(icon, label, modifier = Modifier.size(23.dp))
-                                                    if (dot) Box(Modifier.align(Alignment.TopEnd).offset(x = 4.dp, y = (-2).dp)) { Dot(pal.good, 7) }
+                                                AnimatedVisibility(
+                                                    visible = selected,
+                                                    enter = scaleIn(
+                                                        initialScale = 0.72f,
+                                                        animationSpec = spring(dampingRatio = 0.84f, stiffness = 600f),
+                                                    ) + fadeIn(animationSpec = tween(120)),
+                                                    exit = scaleOut(
+                                                        targetScale = 0.72f,
+                                                        animationSpec = spring(dampingRatio = 0.84f, stiffness = 600f),
+                                                    ) + fadeOut(animationSpec = tween(90)),
+                                                ) {
+                                                    Box {
+                                                        Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
+                                                        if (dot) {
+                                                            Box(Modifier.align(Alignment.TopEnd).offset(x = 3.dp, y = (-2).dp)) {
+                                                                Dot(pal.good, 7)
+                                                            }
+                                                        }
+                                                    }
                                                 }
                                             },
                                             label = {
@@ -572,21 +604,21 @@ fun App(core: Core, resumed: Int) {
                                                     label,
                                                     maxLines = 1,
                                                     softWrap = false,
-                                                    fontSize = 11.sp,
+                                                    overflow = TextOverflow.Ellipsis,
+                                                    fontSize = 10.5.sp,
                                                     fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
                                                 )
                                             },
-                                            colors = ShortNavigationBarItemDefaults.colors(
-                                                selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                                                selectedTextColorTopIconPosition = MaterialTheme.colorScheme.onSurface,
-                                                selectedTextColorStartIconPosition = MaterialTheme.colorScheme.onSurface,
-                                                selectedIndicatorColor = MaterialTheme.colorScheme.secondaryContainer,
-                                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            ),
                                         )
                                     }
-                                    for (t in BOTTOM) item(if (t == Tab.Connection) tr("Connect") else tr(t.title), t.icon, !more && tab == t, isOn(core, t)) { go(t, false) }
+                                    for (t in BOTTOM) {
+                                        item(
+                                            if (t == Tab.Connection) tr("Connect") else tr(t.title),
+                                            t.icon,
+                                            !more && tab == t,
+                                            isOn(core, t),
+                                        ) { go(t, false) }
+                                    }
                                     item(tr("More"), Ico.more, more || tab !in BOTTOM, false) { go(tab, true) }
                                 }
                             }
@@ -809,6 +841,8 @@ private fun TopIdentity(core: Core, v: Int) {
 }
 
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
 private fun MoreList(core: Core, v: Int, BOTTOM: List<Tab>, modifier: Modifier, go: (Tab) -> Unit) {
     @Suppress("UNUSED_EXPRESSION") v
     val entries = ordered(core).filter { it !in BOTTOM && shown(core, it) }
@@ -819,184 +853,154 @@ private fun MoreList(core: Core, v: Int, BOTTOM: List<Tab>, modifier: Modifier, 
         entries.groupBy { if (it.group == "bottom") "System" else it.group }.toList()
     }
     val scheme = MaterialTheme.colorScheme
-    val connectedName = core.host?.name
-        ?: core.peer.takeIf { it.connected }?.peerName
-    val connectionSummary = when {
-        connectedName != null -> tr("Connected to {name}", "name" to connectedName)
-        core.link.state == "connecting" || core.link.pair != null -> tr("Connecting…")
-        else -> tr("No device connected")
-    }
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val darkSurfaces = scheme.surface.luminance() < 0.5f
 
-    Column(
-        modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 14.dp),
-    ) {
-        // A calmer, MonoMail-inspired hub header. Search stays pinned while destinations scroll.
-        Row(
-            Modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp, top = 4.dp, bottom = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text(
-                    tr("Settings"),
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = scheme.onSurface,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Text(
-                    tr("Make TwinDesk work the way you do"),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = scheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 3.dp),
-                )
-            }
-            Surface(
-                shape = CircleShape,
-                color = scheme.secondaryContainer,
-                contentColor = scheme.onSecondaryContainer,
-            ) {
-                Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
-                    Icon(Ico.general, contentDescription = tr("Settings"), modifier = Modifier.size(22.dp))
-                }
-            }
-        }
-        SearchField()
-        Column(
-            Modifier.weight(1f).fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(bottom = 20.dp),
-        ) {
-            // Device identity is the equivalent of MonoMail's account hero, without hiding status.
-            Card(
-                modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 18.dp)
-                    .clickable {
-                        go(if (core.host != null || core.peer.connected) Tab.Overview else Tab.Connection)
-                    },
-                shape = MaterialTheme.shapes.extraLarge,
-                colors = CardDefaults.cardColors(containerColor = scheme.secondaryContainer),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-            ) {
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 18.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Surface(
-                        shape = RoundedCornerShape(18.dp),
-                        color = scheme.surface.copy(alpha = 0.72f),
-                    ) {
-                        Box(Modifier.size(52.dp), contentAlignment = Alignment.Center) {
-                            Icon(
-                                if (connectedName == null) Ico.phone else Ico.display,
-                                contentDescription = null,
-                                tint = scheme.onSecondaryContainer,
-                                modifier = Modifier.size(26.dp),
-                            )
-                        }
-                    }
-                    Column(Modifier.weight(1f).padding(start = 14.dp, end = 8.dp)) {
-                        Text(
-                            connectedName ?: core.store.deviceName,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = scheme.onSecondaryContainer,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        Text(
-                            connectionSummary,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = scheme.onSecondaryContainer.copy(alpha = 0.78f),
-                            modifier = Modifier.padding(top = 3.dp),
-                        )
-                    }
-                    Icon(
-                        Ico.right,
-                        contentDescription = tr("Open connection"),
-                        tint = scheme.onSecondaryContainer,
+    Scaffold(
+        modifier = modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
+        containerColor = scheme.surface,
+        contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
+        topBar = {
+            LargeTopAppBar(
+                title = {
+                    Text(
+                        tr("Settings"),
+                        style = MaterialTheme.typography.headlineLarge,
+                        fontWeight = FontWeight.SemiBold,
                     )
+                },
+                scrollBehavior = scrollBehavior,
+                windowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
+                colors = TopAppBarDefaults.largeTopAppBarColors(
+                    containerColor = scheme.surface,
+                    scrolledContainerColor = scheme.surfaceContainer,
+                ),
+            )
+        },
+    ) { innerPadding ->
+        Column(
+            Modifier.fillMaxSize()
+                .padding(innerPadding)
+                .padding(horizontal = 20.dp, vertical = 8.dp),
+        ) {
+            // Keep search available while the settings-style destination groups scroll.
+            SearchField()
+            Column(
+                Modifier.weight(1f).fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(bottom = 20.dp),
+            ) {
+                Devices(core, v) {
+                    go(if (core.host != null || core.peer.connected) Tab.Overview else Tab.Connection)
                 }
-            }
 
-            sections.forEachIndexed { sectionIndex, (section, tabs) ->
-                if (section.isNotEmpty()) {
-                    Row(
-                        Modifier.fillMaxWidth().padding(
-                            start = 16.dp,
-                            end = 8.dp,
-                            top = if (sectionIndex == 0) 0.dp else 22.dp,
-                            bottom = 8.dp,
-                        ),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
+                sections.forEachIndexed { sectionIndex, (section, tabs) ->
+                    if (section.isNotEmpty()) {
                         Text(
                             tr(section),
                             style = MaterialTheme.typography.titleSmall,
                             color = scheme.onSurfaceVariant,
                             fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.padding(
+                                start = 4.dp,
+                                top = if (sectionIndex == 0) 8.dp else 18.dp,
+                                bottom = 7.dp,
+                            ),
                         )
-                        Text(
-                            tabs.size.toString(),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = scheme.outline,
-                        )
+                    } else if (sectionIndex > 0) {
+                        Spacer(Modifier.height(8.dp))
                     }
-                }
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.extraLarge,
-                    colors = CardDefaults.cardColors(containerColor = scheme.surfaceContainerLow),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                ) {
-                    tabs.forEachIndexed { index, tab ->
-                        if (index > 0) HorizontalDivider(
-                            Modifier.padding(start = 72.dp, end = 16.dp),
-                            color = scheme.outlineVariant.copy(alpha = 0.62f),
-                        )
-                        val (iconContainer, iconTint) = when (tab.group) {
-                            "Phone" -> scheme.primaryContainer to scheme.onPrimaryContainer
-                            "Display" -> scheme.secondaryContainer to scheme.onSecondaryContainer
-                            "Input" -> scheme.tertiaryContainer to scheme.onTertiaryContainer
-                            "Share" -> scheme.primaryContainer to scheme.onPrimaryContainer
-                            "More" -> scheme.secondaryContainer to scheme.onSecondaryContainer
-                            else -> scheme.surfaceContainerHigh to scheme.onSurfaceVariant
-                        }
-                        ListItem(
-                            content = {
-                                Text(
-                                    tr(tab.title),
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = FontWeight.Medium,
+
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(24.dp),
+                        color = scheme.surfaceContainer,
+                    ) {
+                        Column {
+                            tabs.forEachIndexed { index, tab ->
+                                if (index > 0) {
+                                    HorizontalDivider(
+                                        Modifier.padding(start = 72.dp),
+                                        thickness = 0.5.dp,
+                                        color = scheme.outlineVariant.copy(alpha = 0.45f),
+                                    )
+                                }
+
+                                val tileColor = tab.colors.firstOrNull() ?: scheme.primary
+                                val tileContainer = tileColor.copy(alpha = if (darkSurfaces) 0.24f else 0.14f)
+                                val subtitle = when (tab) {
+                                    Tab.Overview -> tr("Connection status and controls for your computer")
+                                    Tab.Connection -> tr("Pair and connect a computer or phone")
+                                    Tab.Calls -> tr("Make and manage calls from your computer")
+                                    Tab.Messages -> tr("Read and send text messages from your computer")
+                                    Tab.Photos -> tr("Browse photos and videos stored on your computer")
+                                    Tab.FileAccess -> tr("Browse this phone's files and shared folders")
+                                    Tab.Screen -> tr("Mirror or extend your computer's display")
+                                    Tab.Cursor -> tr("Control your computer with this phone's pointer")
+                                    Tab.Keyboard -> tr("Type on your computer from this device")
+                                    Tab.Remote -> tr("Use this phone as a touchpad, keyboard or controller")
+                                    Tab.Deck -> tr("Open controls made available by your computer")
+                                    Tab.Clipboard -> tr("Copy text and pictures between your devices")
+                                    Tab.Notifications -> tr("See notifications from both devices")
+                                    Tab.Files -> tr("Send and receive files between devices")
+                                    Tab.Rezume -> tr("Continue supported activity across devices")
+                                    Tab.Sound -> tr("Play audio from one device on the other")
+                                    Tab.Media -> tr("Control media playing on your computer")
+                                    Tab.Camera -> tr("Use this phone's camera on your computer")
+                                    Tab.General -> tr("Connections, permissions, appearance and app behaviour")
+                                    Tab.About -> tr("Version details, updates and open-source information")
+                                }
+
+                                ListItem(
+                                    content = {
+                                        Text(
+                                            tr(tab.title),
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            fontWeight = FontWeight.Medium,
+                                        )
+                                    },
+                                    supportingContent = {
+                                        Text(
+                                            subtitle,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = scheme.onSurfaceVariant,
+                                            maxLines = 2,
+                                        )
+                                    },
+                                    leadingContent = {
+                                        Box(
+                                            Modifier.size(40.dp)
+                                                .clip(RoundedCornerShape(12.dp))
+                                                .background(tileContainer),
+                                            contentAlignment = Alignment.Center,
+                                        ) {
+                                            Icon(
+                                                tab.icon,
+                                                contentDescription = null,
+                                                tint = tileColor,
+                                                modifier = Modifier.size(21.dp),
+                                            )
+                                        }
+                                    },
+                                    trailingContent = {
+                                        Icon(
+                                            Ico.right,
+                                            contentDescription = null,
+                                            tint = scheme.onSurfaceVariant.copy(alpha = 0.65f),
+                                        )
+                                    },
+                                    modifier = Modifier.fillMaxWidth().clickable { go(tab) },
+                                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                                 )
-                            },
-                            leadingContent = {
-                                Surface(shape = RoundedCornerShape(14.dp), color = iconContainer) {
-                                    Box(Modifier.size(42.dp), contentAlignment = Alignment.Center) {
-                                        Icon(tab.icon, null, tint = iconTint, modifier = Modifier.size(21.dp))
-                                    }
-                                }
-                            },
-                            supportingContent = if (wifiOnly(core, tab)) {
-                                { Text(tr("Wi-Fi Direct"), style = MaterialTheme.typography.bodySmall) }
-                            } else null,
-                            trailingContent = {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                ) {
-                                    if (isOn(core, tab)) Badge(containerColor = scheme.tertiary)
-                                    Icon(Ico.right, null, tint = scheme.onSurfaceVariant)
-                                }
-                            },
-                            modifier = Modifier.clickable { go(tab) }.padding(vertical = 2.dp),
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                        )
+                            }
+                        }
                     }
                 }
+                Spacer(Modifier.height(12.dp))
             }
-            Spacer(Modifier.height(12.dp))
         }
     }
-}
-@Composable
+}@Composable
 private fun Page(core: Core, v: Int, resumed: Int, tab: Tab, modifier: Modifier) {
     @Suppress("UNUSED_EXPRESSION") v // redraw on every Core change (Compose skips unread parameters)
     Column(modifier.fillMaxHeight().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp)) {
