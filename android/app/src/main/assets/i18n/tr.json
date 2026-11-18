@@ -1239,5 +1239,6 @@
   "Teal": "Camgöbeği",
   "{other} is {where} {me}.": "{other}, {me} öğesinin {where} tarafında.",
   "Bluetooth fallback": "Bluetooth yedek bağlantısı",
-  "After Wi-Fi or USB disconnects, searches nearby for 5 minutes. A Bluetooth session stays connected until Wi-Fi or USB returns.": "Wi-Fi veya USB bağlantısı kesildikten sonra 5 dakika boyunca yakındaki cihazları arar. Bir Bluetooth oturumu kurulursa Wi-Fi veya USB yeniden bağlanana kadar sürer."
+  "After Wi-Fi or USB disconnects, searches nearby for 5 minutes. A Bluetooth session stays connected until Wi-Fi or USB returns.": "Wi-Fi veya USB bağlantısı kesildikten sonra 5 dakika boyunca yakındaki cihazları arar. Bir Bluetooth oturumu kurulursa Wi-Fi veya USB yeniden bağlanana kadar sürer.",
+  "Dismiss quick actions": "Hızlı işlemleri kapat"
 }
