@@ -232,7 +232,8 @@ public sealed class NativePeerHost : IAsyncDisposable
         string? busyName = null;
         lock (_sessionSync)
         {
-            if (os == ProtocolV1.PeerOs.Android)
+            var explicitTakeover = GetBool(message, "takeover");
+            if (os == ProtocolV1.PeerOs.Android || explicitTakeover)
             {
                 ClearPhoneGraceLocked();
             }
@@ -244,7 +245,7 @@ public sealed class NativePeerHost : IAsyncDisposable
             if (busyName is null && _active is not null && _active.PrimaryConnection.Id != connection.Id)
             {
                 var sameDevice = string.Equals(_active.Device.Id, deviceId, StringComparison.Ordinal);
-                var takeover = sameDevice || os == ProtocolV1.PeerOs.Android || GetBool(message, "takeover");
+                var takeover = sameDevice || os == ProtocolV1.PeerOs.Android || explicitTakeover;
                 if (!takeover)
                     busyName = _active.Device.Name;
                 else
