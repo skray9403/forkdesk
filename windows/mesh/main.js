@@ -1307,7 +1307,6 @@ function createMainWindow(tab, reveal) {
     shown = true;
     if (tab) win.webContents.send('go', tab);
     if (!startHidden || reveal) win.show();
-    win.focus();
   };
   win.once('ready-to-show', show);
   // Match the ordinary window's fallback without revealing a start-to-tray launch.
