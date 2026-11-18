@@ -11,6 +11,7 @@ The native Windows edition supports Windows PC peers and Android phone peers. It
 ## Architecture
 
 - Presentation: WinUI 3/XAML in windows-native/. No web content or browser runtime.
+- Core: plain .NET library in windows-native/Core/, independent of WinUI so protocol and discovery tests run cross-platform.
 - Windows integration: reuse and evolve windows-helper for tray, notifications, capture, input, Bluetooth/Wi-Fi Direct and shell integration.
 - Session engine: port the Windows/Android discovery, pairing, identity, authenticated transport, file, clipboard and media services behind INativeCoreClient. Do not recreate Electron APIs as a compatibility layer.
 - Protocol: retain the wire protocol and cryptographic/authentication behavior required by Android and Windows peers. Drop macOS/Linux/iOS-specific host implementations from the Windows target only after references and tests have been migrated.
