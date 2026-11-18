@@ -32,6 +32,9 @@ jobs:
       - name: Restore x64
         run: dotnet restore TwinDesk.Native.csproj -r win-x64
 
+      - name: Test native core
+        run: dotnet test Tests/TwinDesk.Native.Tests.csproj --configuration Release
+
       - name: Build x64
         run: dotnet build TwinDesk.Native.csproj --configuration Release --no-restore -r win-x64 -p:Platform=x64 --self-contained false
 
