@@ -18,8 +18,8 @@
               BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
             <StackPanel Spacing="10">
               <TextBlock Text="Android device" FontSize="18" FontWeight="SemiBold"/>
-              <TextBlock Text="Not connected" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-              <TextBlock Text="Native UDP discovery is active. Pairing and authenticated sessions are the next integration milestone." TextWrapping="Wrap"/>
+              <TextBlock x:Name="AndroidConnectionState" Text="Waiting for discovery" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+              <TextBlock Text="Nearby Android devices are discovered over the existing protocol-v1 UDP beacon. Pairing and authenticated sessions are still being ported." TextWrapping="Wrap"/>
               <Button Content="Open Android device" HorizontalAlignment="Left" Click="OpenAndroid_Click"/>
             </StackPanel>
           </Border>
@@ -34,9 +34,19 @@
             </StackPanel>
           </Border>
         </Grid>
+        <StackPanel Spacing="8">
+          <Grid>
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+            <TextBlock Text="Nearby peers" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center"/>
+            <Button x:Name="RefreshButton" Grid.Column="1" Content="Refresh" Click="RefreshDiscovery_Click"/>
+          </Grid>
+          <TextBlock x:Name="DiscoveryStatusText" Text="Connecting to native discovery…" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
+          <TextBlock x:Name="PeerCountText" Text="No peer snapshot yet" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+          <StackPanel x:Name="NearbyPeersPanel" Spacing="8"/>
+        </StackPanel>
         <StackPanel Spacing="6">
           <TextBlock Text="Migration status" FontSize="20" FontWeight="SemiBold"/>
-          <TextBlock Text="The shell is native. Feature actions remain unavailable until their native services are connected. No page falls back to a web renderer." TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+          <TextBlock Text="The shell and LAN discovery are native. Feature actions remain unavailable until their native services and authenticated transport are connected. No page falls back to a web renderer." TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
         </StackPanel>
       </StackPanel>
     </ScrollViewer>

@@ -9,18 +9,25 @@
           <TextBlock Text="Connect your Android phone to this Windows PC" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
         </StackPanel>
         <InfoBar IsOpen="True" IsClosable="False" Severity="Warning"
-            Title="Native core not connected yet"
-            Message="Discovery is now native. Pairing remains disabled until identity, TLS authentication and the protocol-v1 pairing exchange are ported."/>
+            Title="Pairing is not available yet"
+            Message="Native discovery is connected. Pairing remains disabled until identity, TLS authentication and the protocol-v1 pairing exchange are ported."/>
         <Border Padding="24" CornerRadius="12"
             Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
             BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
           <StackPanel Spacing="12">
-            <TextBlock Text="Pair an Android phone" FontSize="20" FontWeight="SemiBold"/>
-            <TextBlock Text="The native discovery service listens for compatible Android and Windows peers using the existing protocol-v1 UDP beacon format. USB and wireless-debugging pairing paths are still pending." TextWrapping="Wrap"/>
+            <Grid>
+              <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+              <TextBlock Text="Nearby Android devices" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center"/>
+              <Button x:Name="RefreshButton" Grid.Column="1" Content="Refresh" Click="RefreshDiscovery_Click"/>
+            </Grid>
+            <TextBlock x:Name="DiscoveryStatusText" Text="Connecting to native discovery…" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
+            <TextBlock x:Name="DeviceCountText" Text="No Android device snapshot yet" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+            <StackPanel x:Name="AndroidPeersPanel" Spacing="8"/>
             <Button Content="Pair Android device" IsEnabled="False" HorizontalAlignment="Left"/>
-            <TextBlock Text="Discovery is active; pairing awaits the authenticated transport implementation." FontSize="12" Foreground="{ThemeResource TextFillColorTertiaryBrush}"/>
+            <TextBlock Text="Pairing will be enabled only after the authenticated protocol-v1 transport is implemented and verified." FontSize="12" Foreground="{ThemeResource TextFillColorTertiaryBrush}" TextWrapping="Wrap"/>
           </StackPanel>
         </Border>
+        <TextBlock Text="USB and wireless-debugging pairing paths are still pending. Discovery currently uses the existing protocol-v1 UDP beacon on the local network." TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
       </StackPanel>
     </ScrollViewer>
   </Grid>
