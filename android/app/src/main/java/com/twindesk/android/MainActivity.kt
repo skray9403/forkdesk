@@ -533,7 +533,8 @@ fun App(core: Core, resumed: Int) {
                             }
                         }
                     }
-                    // Photos-style floating navigation pill, using the stock Material NavigationBar.
+                    // MonoMail-inspired floating segmented dock, retaining stock M3 navigation
+                    // semantics and the existing expressive motion scheme.
                     Row(
                         Modifier.padding(start = 14.dp, end = 14.dp, bottom = 10.dp, top = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -541,9 +542,9 @@ fun App(core: Core, resumed: Int) {
                         Surface(
                             modifier = Modifier.weight(1f).onHold { NavOrder.open.value = true },
                             shape = CircleShape,
-                            color = MaterialTheme.colorScheme.surfaceContainer,
-                            tonalElevation = 2.dp,
-                            shadowElevation = 4.dp,
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            tonalElevation = 1.dp,
+                            shadowElevation = 5.dp,
                         ) {
                             MaterialExpressiveTheme(
                                 colorScheme = MaterialTheme.colorScheme,
@@ -552,7 +553,7 @@ fun App(core: Core, resumed: Int) {
                                 typography = MaterialTheme.typography,
                             ) {
                                 ShortNavigationBar(
-                                    modifier = Modifier.fillMaxWidth(),
+                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp),
                                     containerColor = Color.Transparent,
                                     contentColor = MaterialTheme.colorScheme.onSurface,
                                     windowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
@@ -562,18 +563,26 @@ fun App(core: Core, resumed: Int) {
                                             selected = selected, onClick = go,
                                             icon = {
                                                 Box {
-                                                    Icon(icon, label, modifier = Modifier.size(24.dp))
+                                                    Icon(icon, label, modifier = Modifier.size(23.dp))
                                                     if (dot) Box(Modifier.align(Alignment.TopEnd).offset(x = 4.dp, y = (-2).dp)) { Dot(pal.good, 7) }
                                                 }
                                             },
-                                            label = { Text(label, maxLines = 1, softWrap = false, fontSize = 12.sp, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium) },
+                                            label = {
+                                                Text(
+                                                    label,
+                                                    maxLines = 1,
+                                                    softWrap = false,
+                                                    fontSize = 11.sp,
+                                                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                                                )
+                                            },
                                             colors = ShortNavigationBarItemDefaults.colors(
-                                                selectedIconColor = pal.accent,
-                                                selectedTextColorTopIconPosition = pal.text,
-                                                selectedTextColorStartIconPosition = pal.text,
-                                                selectedIndicatorColor = pal.accentSoft,
-                                                unselectedIconColor = pal.muted,
-                                                unselectedTextColor = pal.muted,
+                                                selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                                                selectedTextColorTopIconPosition = MaterialTheme.colorScheme.onSurface,
+                                                selectedTextColorStartIconPosition = MaterialTheme.colorScheme.onSurface,
+                                                selectedIndicatorColor = MaterialTheme.colorScheme.secondaryContainer,
+                                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                             ),
                                         )
                                     }
