@@ -32,6 +32,7 @@ The returning user's tray-only path keeps discovery, pairing, the HTTPS peer hos
 
 Optional services now follow their existing settings:
 
+- The Windows renderer registers the sidebar immediately, but builds each page's DOM and controls only the first time that page is opened. Subsequent state updates render only the active page. The existing script gating for modules switched off in Settings remains unchanged; scripts for enabled modules are still loaded by the page.
 - The Chats service is created only when Messages/Chats is enabled.
 - The Windows audio service and its hidden audio-window IPC are created only while sending or receiving PC audio is enabled. A lightweight listener remembers the peer's audio policy while the service is unloaded, so enabling audio after pairing still uses the peer's current policy.
 - The incoming SSH server status probe is skipped unless **Allow the other computer to open a terminal here** is enabled or an existing key needs cleanup. The setup action loads it explicitly.
