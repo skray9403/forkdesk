@@ -16,30 +16,35 @@ permissions:
   contents: read
 
 jobs:
+  core-tests:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Test native core
+        working-directory: windows-native
+        run: dotnet test Tests/TwinDesk.Native.Tests.csproj --configuration Release
+
   build:
     runs-on: windows-2022
+    needs: core-tests
     defaults:
       run:
         working-directory: windows-native
     steps:
       - uses: actions/checkout@v4
-
       - name: Set up .NET 10
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
-
       - name: Restore x64
         run: dotnet restore TwinDesk.Native.csproj -r win-x64
-
-      - name: Test native core
-        run: dotnet test Tests/TwinDesk.Native.Tests.csproj --configuration Release
-
       - name: Build x64
         run: dotnet build TwinDesk.Native.csproj --configuration Release --no-restore -r win-x64 -p:Platform=x64 --self-contained false
-
       - name: Restore ARM64
         run: dotnet restore TwinDesk.Native.csproj -r win-arm64
-
       - name: Build ARM64
         run: dotnet build TwinDesk.Native.csproj --configuration Release --no-restore -r win-arm64 -p:Platform=ARM64 --self-contained false
