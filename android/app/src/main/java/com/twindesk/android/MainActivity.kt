@@ -557,6 +557,7 @@ fun App(core: Core, resumed: Int) {
                             FloatingActionButton(
                                 onClick = { Search.open.value = true },
                                 modifier = Modifier.size(56.dp),
+                                shape = CircleShape,
                                 containerColor = MaterialTheme.colorScheme.surfaceContainer,
                                 contentColor = MaterialTheme.colorScheme.onSurface,
                             ) {
