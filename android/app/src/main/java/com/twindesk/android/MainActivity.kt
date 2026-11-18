@@ -280,6 +280,8 @@ fun App(core: Core, resumed: Int) {
     val BOTTOM = bottom(core).filter { core.moduleOn(it.name.lowercase()) } // General › Modules
     var more by rememberSaveable { mutableStateOf(false) }
     var fabMenuExpanded by rememberSaveable { mutableStateOf(false) }
+    var showPairAddress by rememberSaveable { mutableStateOf(false) }
+    var pairAddressInput by rememberSaveable { mutableStateOf("") }
     MainActivity.openTab.value?.let { name ->
         Tab.entries.firstOrNull { it.name == name }?.takeIf { shown(core, it) }?.let { tab = it; more = false }
         MainActivity.openTab.value = null
@@ -370,6 +372,41 @@ fun App(core: Core, resumed: Int) {
     // Search (Search.kt): over everything; a result opens its page.
     if (Search.open.value) return SearchScreen(Tab.entries.filter { shown(core, it) }.map { it.name to it.title }) { name ->
         Tab.entries.firstOrNull { it.name == name }?.takeIf { shown(core, it) }?.let { tab = it; more = false }
+    }
+
+    if (showPairAddress) {
+        AlertDialog(
+            onDismissRequest = { showPairAddress = false; pairAddressInput = "" },
+            title = { Text(tr("Pair by address")) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(tr("Enter the computer’s IP address on your network."))
+                    OutlinedTextField(
+                        value = pairAddressInput,
+                        onValueChange = { pairAddressInput = it },
+                        singleLine = true,
+                        placeholder = { Text("192.168.1.20") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val address = pairAddressInput.trim()
+                        showPairAddress = false
+                        pairAddressInput = ""
+                        if (address.isNotEmpty()) core.pairAddress(address)
+                    },
+                    enabled = pairAddressInput.isNotBlank(),
+                ) { Text(tr("Pair")) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPairAddress = false; pairAddressInput = "" }) {
+                    Text(tr("Cancel"))
+                }
+            },
+        )
     }
 
     Box(Modifier.fillMaxSize().background(pal.content)) {
@@ -550,16 +587,16 @@ fun App(core: Core, resumed: Int) {
                     text = { Text(tr("Scan QR code")) },
                 )
                 FloatingActionButtonMenuItem(
-                    onClick = { fabMenuExpanded = false; Search.open.value = true },
-                    icon = { Icon(Ico.search, contentDescription = null) },
-                    text = { Text(tr("Search features")) },
+                    onClick = { fabMenuExpanded = false; showPairAddress = true },
+                    icon = { Icon(Ico.link, contentDescription = null) },
+                    text = { Text(tr("Pair by address")) },
                 )
                 FloatingActionButtonMenuItem(
                     onClick = {
                         fabMenuExpanded = false
                         Thread { runCatching { core.discovery.probe() } }.start()
                     },
-                    icon = { Icon(Ico.link, contentDescription = null) },
+                    icon = { Icon(Ico.history, contentDescription = null) },
                     text = { Text(tr("Refresh nearby")) },
                 )
                 FloatingActionButtonMenuItem(
