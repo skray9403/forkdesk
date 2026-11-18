@@ -37,19 +37,15 @@ const setupIpc = require('./ipc');
 const { HistoryKeeper } = require('../shared/histkeeper.js');
 const Helper = require('./helper');
 const Kvm = require('./kvm');
-const firewall = require('./firewall');
 const FileDrop = require('./filedrop');
 const Smb = require('./smb');
 const Apps = require('./apps');
-const Sound = require('./sound');
 const FileRecv = require('./filerecv');
 const DragRecv = require('./dragrecv');
-const Sshd = require('./sshd');
 const PcScreen = require('./pcscreen');
 const PcApps = require('./pcapps');
 const PeerApps = require('./peerapps');
 const Sender = require('./sender');
-const Vdd = require('./vdd');
 const Hud = require('./hud');
 const Notifs = require('./notifs');
 const { Explorer } = require('./explorer');
@@ -171,6 +167,7 @@ let localApi = null; // General › Local API (shared/localapi.js), made with fi
 let smb = null;
 let apps = null;
 let sound = null;
+let soundPeerAccepts = false; // latest audio.policy, retained even while the Audio service is unloaded
 let mic = null; // Audio › Microphone (shared/mic.js), loaded only while one of its switches is on
 let pcScreen = null;
 let pcApps = null;
@@ -207,7 +204,9 @@ let net = null; // Wi-Fi for a session through Bluetooth (netlink.js)
 let wifi = null; // this PC's Wi-Fi for it: hosting, joining (wifi.js)
 let lastMode = 'home';
 let web = null; // TwinDesk Web (shared/web/webwire.js): browsers and iPhones as devices of their own
-let fw = { checking: true, ok: null, message: 'Checking…' }; // firewall self-check
+let fw = { checking: true, ok: null, message: 'Checking…' }; // checked when the main workspace is first opened
+let readinessChecksStarted = false;
+let vddCheckPromise = null;
 // Started at sign-in (tray only), or by a pinned Mac app's shortcut (that app only).
 const startHidden = process.argv.includes('--hidden') || process.argv.some((a) => a.startsWith('--mac-app=') || a.startsWith('--phone-app='));
 let pendingMacApp = null; // {id, until}: opened once the Mac connects (2 min)
@@ -220,6 +219,41 @@ function loadDevice() {
     store.write('device.json', d);
   }
   return { id: d.id, name: os.hostname() };
+}
+
+// These services are intentionally absent from the returning user's tray-only startup path.
+// Their existing implementations are loaded unchanged when their setting or action needs them.
+function loadChats() {
+  if (chats || !settings || !settings.ui.chats) return chats;
+  const { Chats } = require('../shared/chats.js');
+  chats = new Chats({ link, dir: app.getPath('userData'), want: () => settings.ui.chats === true, onChange: pushState });
+  return chats;
+}
+
+function loadSshd(force = false) {
+  if (sshd) return sshd;
+  if (!force && (!settings || (!settings.terminal.allowMac && !settings.terminal.installedKey))) return null;
+  const Sshd = require('./sshd');
+  sshd = new Sshd({ link, settings, save: saveSettings, onChange: pushState });
+  return sshd;
+}
+
+function loadSound() {
+  if (sound) return sound;
+  const Sound = require('./sound');
+  sound = new Sound({ link, settings, onChange: pushState });
+  sound.macAccepts = soundPeerAccepts;
+  return sound;
+}
+
+function applySound() {
+  if (settings && (settings.audio.send || settings.audio.receive)) return loadSound().apply();
+  if (sound) return sound.apply();
+  if (link && link.status.state === 'connected') link.send({ t: P.T.AUDIO_POLICY, accept: false });
+}
+
+function soundView() {
+  return sound ? sound.view() : { receiving: false, sending: false, error: '', macAccepts: soundPeerAccepts };
 }
 
 function start() {
@@ -270,6 +304,15 @@ function start() {
     resolveAddress: (macId) => discovery.get(macId),
   });
   link = new Peer(guest);
+  link.on(P.T.AUDIO_POLICY, (m) => {
+    soundPeerAccepts = m.accept === true;
+    if (sound) sound.macAccepts = soundPeerAccepts;
+  });
+  link.on('welcome', () => {
+    if (!sound) link.send({ t: P.T.AUDIO_POLICY, accept: false });
+  });
+  if (settings.audio.send || settings.audio.receive) loadSound();
+  if (settings.terminal.allowMac || settings.terminal.installedKey) loadSshd();
   link.setPlain(settings.files.plain === true); // Files › Encrypt file transfers
   if (settings.drive.on) loadDrive();
   // The files engine (shared/fx2.js) stays up while another TwinDesk computer is on the network: a
@@ -310,8 +353,7 @@ function start() {
       : t('Update it there: some features need the same version on both');
     try { new Notification({ title, body }).show(); } catch {}
   });
-  const { Chats } = require('../shared/chats.js');
-  chats = new Chats({ link, dir: app.getPath('userData'), want: () => settings.ui.chats === true, onChange: pushState });
+  if (settings.ui.chats) loadChats();
   loadCamera(); // only while it's on
   screen = new Screen({
     link,
@@ -323,7 +365,6 @@ function start() {
     isQuitting: () => quitting,
   });
   loadTerminal(); // only while it's on
-  sshd = new Sshd({ link, settings, save: saveSettings, onChange: pushState });
   fileDrop = new FileDrop({ link, settings, outboxFile: path.join(app.getPath('userData'), 'outbox.json'), peer: () => { const v = link.snapshot().session; return v ? { id: v.id || v.name || '', name: v.name || '' } : null; }, onProgress: (v) => { screen.sendDropProgress({ ...v, peerName: peerName() }); pushState(); } });
   {
     const { LocalApi } = require('../shared/localapi.js');
@@ -337,7 +378,6 @@ function start() {
   screen.fileDrop = fileDrop;
   apps = new Apps({ link, allowed: () => settings.macApps.on, getLanguage: () => i18n.locale, getMonitor: () => screen.win, popup: (kind, text) => hud && hud.show(kind, text), peerName, onChange: pushState, onWatch: () => screen.policy() });
   screen.apps = apps;
-  sound = new Sound({ link, settings, onChange: pushState });
   loadMic();
   smb = new Smb({ link, settings, save: saveSettings, onChange: pushState });
   helper = new Helper();
@@ -379,6 +419,7 @@ function start() {
   // The lock key at home: a global shortcut, held while connected (pushState syncs it).
   lockKey = new CL.GlobalLockKey(globalShortcut, () => kvm.toggleLock());
 
+  const Vdd = require('./vdd');
   vdd = new Vdd({ helper, onChange: pushState });
   // Notifications both ways, Send files, copy/paste files with shortcuts
   notifs = new Notifs({ link, helper, settings, save: saveSettings, selfIds: [AUMID, 'org.macshare.windows'], peerName, onChange: pushState });
@@ -468,7 +509,7 @@ function start() {
   setupNet(guest);
   helper.start();
   helper.on('ready', () => {
-    vdd.check(); // switches a virtual monitor left on by a crash off
+    if (readinessChecksStarted) checkVdd();
     initializeNativeTray();
   });
   // New releases on GitHub: a notification once per version, the tray item and About › Updates.
@@ -489,7 +530,7 @@ function start() {
   web = require('./web').setupWeb({ deck: (bus) => (loadDeck() ? deck.web(bus) : null), settings: () => settings, save: saveSettings, pushState, t, device: () => device, helper, smb, notifs, fileClip, vdd, pcScreen,
     kvm: () => kvm, devctl: () => devctl, loadVcam });
   const ipc = setupIpc({ takePhoto: () => !!phonePhoto && phonePhoto.take(), loadDrive, getDrive: () => drive, history: (r) => historyKeeper && historyKeeper.act(r), deck: () => loadDeck(), clearFiles: () => { fileDrop.last = null; if (fileRecv) fileRecv.last = null; if (kvm && kvm.dragRecv) kvm.dragRecv.last = null; pushState(); }, // Files › Recent › Clear: only the list
-    iosSign: () => iosSign, devctl: () => devctl, chats: () => chats, explorer: () => explorer, qrPair: qrPairView, adbQr: adbQrDo, link, discovery, screen, clip, kvm, sshd, fileDrop, smb, apps, sound, pcScreen, pcApps, peerApps, vdd, notifs, fileClip, wake, updates, settings, save: saveSettings, push: pushState, buildState,
+    iosSign: () => iosSign, devctl: () => devctl, chats: loadChats, getSshd: loadSshd, explorer: () => explorer, qrPair: qrPairView, adbQr: adbQrDo, link, discovery, screen, clip, kvm, fileDrop, smb, apps, sound: { apply: applySound }, pcScreen, pcApps, peerApps, vdd, notifs, fileClip, wake, updates, settings, save: saveSettings, push: pushState, buildState,
     get rezume() { return rezume; }, loadReZume,
     get phone() { return phone; }, get phoneViews() { return phoneViews; }, get camShare() { return camShare; }, get vcam() { return vcam; }, get phoneRemote() { return phoneRemote; }, get nowPlaying() { return nowPlaying; }, get btAudio() { return btAudio; }, get phoneDrive() { return phoneDrive; }, get terminal() { return terminal; }, loadRemote, setCamera, loadNowPlaying, loadBtAudio, loadMic, loadTerminal, connectPhoneDev, cancelPhoneInvite, hub: loadHub,
     get net() { return net; }, applyNet, joinHotspot,
@@ -508,7 +549,6 @@ function start() {
   createTray();
   if (!startHidden && firstRun) createMainWindow(); // returning users start in the native tray flyout
   if (!openLink(process.argv) && !sendTo.handle(process.argv) && !openMacAppArg(process.argv)) openPhoneAppArg(process.argv);
-  setTimeout(checkFirewall, 3000);
   if (process.argv.includes('--test-monitor')) screen.open(true); // dev: ?test=1 pattern
 }
 
@@ -1269,6 +1309,7 @@ function missing() {
 
 // Setup shows once: until everything is ready or it's skipped.
 function setupShows(miss) {
+  if (vdd && !vdd.view().checked) return false;
   if (!settings.setup.done && !fw.checking && !miss.length) {
     settings.setup.done = true;
     saveSettings();
@@ -1331,11 +1372,12 @@ function buildState() {
     updates: updates ? updates.view : null,
     localApi: localApi ? localApi.view() : null,
     firewall: fw,
-    audio: { ...settings.audio, ...sound.view(), mic: mic ? mic.view() : null },
+    audio: { ...settings.audio, ...soundView(), mic: mic ? mic.view() : null },
     pcScreen: pcScreen.view(),
     pcApps: pcApps.view(),
     macApps: settings.macApps,
-    terminal: { ...settings.terminal, ...(terminal ? terminal.view() : { status: 'off', message: '', command: 'ssh twindesk' }), installedKey: undefined, server: sshd.view() },
+    terminal: { ...settings.terminal, ...(terminal ? terminal.view() : { status: 'off', message: '', command: 'ssh twindesk' }), installedKey: undefined,
+      server: sshd ? sshd.view() : { service: 'unknown', busy: false, message: '', macAsked: false, info: null, admin: null } },
     files: { ...settings.files, importTo: explorer ? explorer.view : null, ...fileDrop.view(), received: receivedDir(settings, app.getPath('downloads')), smb: smb.view(), incoming: fileRecv.view(), drag: kvm.dragRecv.view(), macDrags: kvm.peerDrags, clip: fileClip.view() },
     notifs: { ...settings.notifs, ...notifs.view() },
     history: historyKeeper ? historyKeeper.view() : null,
@@ -1417,13 +1459,33 @@ function onKvmChange() {
 // ---- firewall, start with Windows ----
 
 async function checkFirewall() {
+  const firewall = require('./firewall');
   fw = { ...fw, checking: true };
   pushState();
   fw = { ...(await firewall.check()), checking: false };
   pushState();
 }
 
+function checkVdd() {
+  if (!vdd || vdd.state.checked) return Promise.resolve(vdd && vdd.view());
+  if (vddCheckPromise) return vddCheckPromise;
+  vddCheckPromise = Promise.resolve(vdd.check()).finally(() => { vddCheckPromise = null; });
+  return vddCheckPromise;
+}
+
+// Expensive Windows checks are requested by opening the workspace, not by signing into the tray.
+function checkWindowsReadiness() {
+  if (!readinessChecksStarted) {
+    readinessChecksStarted = true;
+    checkVdd();
+    const timer = setTimeout(() => checkFirewall().catch((e) => console.warn('[firewall] check failed:', e.message)), 900);
+    if (timer.unref) timer.unref();
+  }
+  return checkVdd();
+}
+
 async function fixFirewall() {
+  const firewall = require('./firewall');
   fw = { ...fw, checking: true };
   pushState();
   try {
@@ -1466,6 +1528,7 @@ function statusLine(s) {
 // The main window exists only while it's open: closing it (to the tray) frees its page, about
 // 50-100 MB; opening it again makes it anew (showMain).
 function createMainWindow(tab) {
+  checkWindowsReadiness();
   const b = settings.windows.main || {};
   mainWin = new BrowserWindow({
     width: b.width || 900,
@@ -1645,15 +1708,15 @@ function updateTray(s = buildState()) {
     driven: { label: t('Let {name} Control {me}', { name: other, me: device.name }), checked: k.beDriven, set: (on) => set('kvm', { beDriven: on }, () => kvm.applyConfig()) },
     popup: { checked: settings.app.hud, set: (on) => set('app', { hud: on }) },
     screen: [
-      { label: t('Share Screen'), checked: sharing, set: (on) => pcScreen.setMode(on ? 'last' : 'off') }, // in the mode last picked here
-      { label: t('Extend'), checked: pcScreen.mode === 'extend', set: (on) => (on ? pcScreen.extend() : pcScreen.setMode('off')) },
+      { label: t('Share Screen'), checked: sharing, set: (on) => (on ? checkVdd().then(() => pcScreen.setMode('last')) : pcScreen.setMode('off')) }, // driver probe only on an explicit share action
+      { label: t('Extend'), checked: pcScreen.mode === 'extend', set: (on) => (on ? checkVdd().then(() => pcScreen.extend()) : pcScreen.setMode('off')) },
       { label: t('Mirror'), checked: pcScreen.mode === 'mirror', set: (on) => pcScreen.setMode(on ? 'mirror' : 'off') },
       { sep: true },
       // Opens/closes the screen window (opening starts the other computer's sharing).
       { label: t('Receive Screen'), checked: watching, set: (on) => (on ? screen.open(false) : screen.close()) },
     ],
     clipboard: { checked: settings.clipboard.enabled, set: (on) => set('clipboard', { enabled: on }, () => clip.applySettings()) },
-    sound: { checked: settings.audio.send, set: (on) => set('audio', { send: on }, () => sound.apply()) },
+    sound: { checked: settings.audio.send, set: (on) => set('audio', { send: on }, applySound) },
     drag: { checked: settings.files.edgeDrag, set: (on) => set('files', { edgeDrag: on }, () => kvm.applyConfig()) },
     shortcuts: { label: t('Copy and Paste Files ({copy}, {paste})', { copy: CL.keysLabel(settings.files.copyKeys, 'win'), paste: CL.keysLabel(settings.files.pasteKeys, 'win') }), checked: settings.files.shortcuts, set: (on) => set('files', { shortcuts: on }, () => { kvm.applyConfig(); fileClip.apply(); }) },
     found: found.map((d) => ({ label: d.name + ' (' + kind(d.os) + ')', click: () => {
