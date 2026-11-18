@@ -50,7 +50,7 @@ public sealed partial class AndroidPage : Page
         catch (Exception ex)
         {
             _dispatcherQueue?.TryEnqueue(() => DiscoveryStatusText.Text =
-                $"Unable to read discovery state: {ex.Message}");
+                $"Unable to read native state: {ex.Message}");
         }
     }
 
@@ -59,14 +59,16 @@ public sealed partial class AndroidPage : Page
 
     private void ApplySnapshot(NativeCoreSnapshot snapshot)
     {
-        DiscoveryStatusText.Text = snapshot.Status;
+        DiscoveryStatusText.Text = $"{snapshot.Status}. {snapshot.HostStatus}";
         var androidPeers = snapshot.NearbyPeers
             .Where(peer => peer.Platform == PeerPlatform.Android)
             .ToArray();
 
-        DeviceCountText.Text = androidPeers.Length == 1
-            ? "1 Android device nearby"
-            : $"{androidPeers.Length} Android devices nearby";
+        DeviceCountText.Text = snapshot.ConnectedDevice is not null
+            ? $"Connected to {snapshot.ConnectedDevice.Name}"
+            : androidPeers.Length == 1
+                ? "1 Android device nearby"
+                : $"{androidPeers.Length} Android devices nearby";
 
         AndroidPeersPanel.Children.Clear();
         if (androidPeers.Length == 0)
@@ -76,23 +78,38 @@ public sealed partial class AndroidPage : Page
                 Text = "No Android device found. Keep TwinDesk open on your phone and check that both devices are on the same network.",
                 TextWrapping = TextWrapping.Wrap
             });
-            return;
+        }
+        else
+        {
+            foreach (var peer in androidPeers)
+            {
+                var item = new StackPanel { Spacing = 3 };
+                item.Children.Add(new TextBlock { Text = peer.Name, FontSize = 15, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+                item.Children.Add(new TextBlock { Text = $"{peer.Address}:{peer.Port}" });
+                item.Children.Add(new TextBlock { Text = $"Last seen {peer.LastSeen.ToLocalTime():HH:mm:ss} · {(peer.IsPaired ? "Paired" : "Not paired")}", FontSize = 12 });
+                AndroidPeersPanel.Children.Add(new Border
+                {
+                    Padding = new Thickness(14),
+                    CornerRadius = new CornerRadius(10),
+                    BorderThickness = new Thickness(1),
+                    Child = item
+                });
+            }
         }
 
-        foreach (var peer in androidPeers)
-        {
-            var item = new StackPanel { Spacing = 3 };
-            item.Children.Add(new TextBlock { Text = peer.Name, FontSize = 15, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
-            item.Children.Add(new TextBlock { Text = $"{peer.Address}:{peer.Port}" });
-            item.Children.Add(new TextBlock { Text = $"Last seen {peer.LastSeen.ToLocalTime():HH:mm:ss} · Pairing unavailable", FontSize = 12 });
-            AndroidPeersPanel.Children.Add(new Border
-            {
-                Padding = new Thickness(14),
-                CornerRadius = new CornerRadius(10),
-                BorderThickness = new Thickness(1),
-                Child = item
-            });
-        }
+        var prompt = snapshot.PendingPairing;
+        PairingPromptCard.Visibility = prompt is null ? Visibility.Collapsed : Visibility.Visible;
+        if (prompt is null) return;
+
+        PairingPromptTitle.Text = $"{prompt.DeviceName} ({prompt.Platform}) wants to pair";
+        PairingCodeText.Text = prompt.ShortAuthenticationCode.Length == 6
+            ? $"{prompt.ShortAuthenticationCode[..3]} {prompt.ShortAuthenticationCode[3..]}"
+            : "Waiting…";
+        PairingStatusText.Text = prompt.IsConfirmed
+            ? "The phone confirmed the code. Approve here to finish pairing."
+            : "Compare both codes. Approving grants this device a persistent pairing token.";
+        AllowPairingButton.IsEnabled = prompt.ShortAuthenticationCode.Length == 6 && !prompt.IsAllowed;
+        DenyPairingButton.IsEnabled = true;
     }
 
     private async void RefreshDiscovery_Click(object sender, RoutedEventArgs e)
@@ -114,5 +131,23 @@ public sealed partial class AndroidPage : Page
         {
             RefreshButton.IsEnabled = _core is not null;
         }
+    }
+
+    private async void ApprovePairing_Click(object sender, RoutedEventArgs e)
+    {
+        var core = _core;
+        if (core is null) return;
+        AllowPairingButton.IsEnabled = false;
+        try { await core.ApprovePairingAsync(true); }
+        catch (Exception ex) { PairingStatusText.Text = $"Approval failed: {ex.Message}"; }
+    }
+
+    private async void DenyPairing_Click(object sender, RoutedEventArgs e)
+    {
+        var core = _core;
+        if (core is null) return;
+        DenyPairingButton.IsEnabled = false;
+        try { await core.ApprovePairingAsync(false); }
+        catch (Exception ex) { PairingStatusText.Text = $"Denial failed: {ex.Message}"; }
     }
 }

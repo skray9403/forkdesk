@@ -62,9 +62,11 @@ public sealed partial class OverviewPage : Page
     {
         DiscoveryStatusText.Text = snapshot.Status;
         var androidCount = snapshot.NearbyPeers.Count(peer => peer.Platform == PeerPlatform.Android);
-        AndroidConnectionState.Text = androidCount == 0
-            ? "No Android device discovered"
-            : $"{androidCount} Android device(s) discovered";
+        AndroidConnectionState.Text = snapshot.ConnectedDevice is not null
+            ? $"Connected to {snapshot.ConnectedDevice.Name}"
+            : androidCount == 0
+                ? "No Android device discovered"
+                : $"{androidCount} Android device(s) discovered";
         PeerCountText.Text = $"{snapshot.NearbyPeers.Count} compatible peer(s) nearby";
 
         NearbyPeersPanel.Children.Clear();

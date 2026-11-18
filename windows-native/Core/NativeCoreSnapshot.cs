@@ -14,7 +14,12 @@ public sealed record NearbyPeer(
 public sealed record NativeCoreSnapshot(
     bool IsAvailable,
     string Status,
-    IReadOnlyList<NearbyPeer> NearbyPeers)
+    IReadOnlyList<NearbyPeer> NearbyPeers,
+    bool HostListening = false,
+    string HostStatus = "",
+    PairingPrompt? PendingPairing = null,
+    IReadOnlyList<PairedDevice>? PairedDevices = null,
+    PairedDevice? ConnectedDevice = null)
 {
     public static NativeCoreSnapshot Unavailable(string status) =>
         new(false, status, Array.Empty<NearbyPeer>());

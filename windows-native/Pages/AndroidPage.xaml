@@ -8,9 +8,24 @@
           <TextBlock Text="Android device" FontSize="30" FontWeight="SemiBold"/>
           <TextBlock Text="Connect your Android phone to this Windows PC" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
         </StackPanel>
-        <InfoBar IsOpen="True" IsClosable="False" Severity="Warning"
-            Title="Pairing is not available yet"
-            Message="Native discovery is connected. Pairing remains disabled until identity, TLS authentication and the protocol-v1 pairing exchange are ported."/>
+        <InfoBar IsOpen="True" IsClosable="False" Severity="Informational"
+            Title="Pair from your phone"
+            Message="The native Windows host is listening on the protocol-v1 TLS port. Start Pair on the Android app, then compare the six-digit code below before approving."/>
+        <Border x:Name="PairingPromptCard" Visibility="Collapsed" Padding="22" CornerRadius="12"
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource AccentFillColorDefaultBrush}" BorderThickness="1">
+          <StackPanel Spacing="12">
+            <TextBlock Text="Pairing request" FontSize="20" FontWeight="SemiBold"/>
+            <TextBlock x:Name="PairingPromptTitle" Text="A device wants to pair" FontSize="15"/>
+            <TextBlock Text="Compare this code with the one shown on your Android phone." Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
+            <TextBlock x:Name="PairingCodeText" Text="------" FontSize="36" FontWeight="SemiBold" CharacterSpacing="120" HorizontalAlignment="Center"/>
+            <TextBlock x:Name="PairingStatusText" Text="Waiting for phone confirmation" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <Button x:Name="AllowPairingButton" Content="Approve pairing" IsEnabled="False" Click="ApprovePairing_Click"/>
+              <Button x:Name="DenyPairingButton" Content="Deny" Click="DenyPairing_Click"/>
+            </StackPanel>
+          </StackPanel>
+        </Border>
         <Border Padding="24" CornerRadius="12"
             Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
             BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
@@ -23,11 +38,9 @@
             <TextBlock x:Name="DiscoveryStatusText" Text="Connecting to native discovery…" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
             <TextBlock x:Name="DeviceCountText" Text="No Android device snapshot yet" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
             <StackPanel x:Name="AndroidPeersPanel" Spacing="8"/>
-            <Button Content="Pair Android device" IsEnabled="False" HorizontalAlignment="Left"/>
-            <TextBlock Text="Pairing will be enabled only after the authenticated protocol-v1 transport is implemented and verified." FontSize="12" Foreground="{ThemeResource TextFillColorTertiaryBrush}" TextWrapping="Wrap"/>
+            <TextBlock Text="USB and wireless-debugging pairing paths are still pending. Current pairing uses the existing protocol-v1 TLS and UDP discovery." FontSize="12" Foreground="{ThemeResource TextFillColorTertiaryBrush}" TextWrapping="Wrap"/>
           </StackPanel>
         </Border>
-        <TextBlock Text="USB and wireless-debugging pairing paths are still pending. Discovery currently uses the existing protocol-v1 UDP beacon on the local network." TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
       </StackPanel>
     </ScrollViewer>
   </Grid>

@@ -20,12 +20,13 @@ public partial class App : Application
             var dataDirectory = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "TwinDesk.Native");
-            _identity = new NativeIdentityStore(dataDirectory).LoadOrCreate();
-            _core = new NativeCoreClient(new DiscoveryOptions
+            var identity = new NativeIdentityStore(dataDirectory).LoadOrCreate();
+            _identity = identity;
+            _core = new NativeCoreClient(identity, dataDirectory, new DiscoveryOptions
             {
-                DeviceId = _identity.Id,
-                DeviceName = _identity.Name,
-                Fingerprint = _identity.Fingerprint
+                DeviceId = identity.Id,
+                DeviceName = identity.Name,
+                Fingerprint = identity.Fingerprint
             });
 
             _window = new MainWindow(_core);
@@ -52,7 +53,7 @@ public partial class App : Application
 
     private static void ShowStartupError(string message) =>
         MessageBoxW(IntPtr.Zero,
-            "TwinDesk could not initialize its native device identity or discovery service." +
+            "TwinDesk could not initialize its native device identity or host services." +
             Environment.NewLine + Environment.NewLine + message,
             "TwinDesk", 0x10);
 
