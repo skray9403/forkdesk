@@ -87,6 +87,30 @@ public sealed class NativePeerHost : IAsyncDisposable
 
     public void ApprovePairing(bool allow) => _pairing.Approve(allow);
 
+    public async Task<bool> ForgetDeviceAsync(string deviceId, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(deviceId);
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        var removed = _pairing.ForgetDevice(deviceId);
+        PeerSession? active;
+        lock (_sessionSync)
+            active = _active?.Device.Id == deviceId ? _active : null;
+
+        if (active is not null)
+        {
+            await EndSessionAsync(
+                active,
+                WebSocketCloseStatus.PolicyViolation,
+                "This computer forgot the pairing",
+                ProtocolV1.Error.BadToken).ConfigureAwait(false);
+            removed = true;
+        }
+
+        StateChanged?.Invoke();
+        return removed;
+    }
+
     public async Task DisconnectAsync(CancellationToken cancellationToken = default)
     {
         PeerSession? active;
@@ -378,7 +402,11 @@ public sealed class NativePeerHost : IAsyncDisposable
             _sessions.TryRemove(connection.Id, out _);
     }
 
-    private async Task EndSessionAsync(PeerSession session, WebSocketCloseStatus status, string reason)
+    private async Task EndSessionAsync(
+        PeerSession session,
+        WebSocketCloseStatus status,
+        string reason,
+        string? errorCode = null)
     {
         TlsWebSocketConnection[] connections;
         lock (_sessionSync)
@@ -391,7 +419,12 @@ public sealed class NativePeerHost : IAsyncDisposable
 
         foreach (var connection in connections)
         {
-            try { await connection.CloseAsync(status, reason).ConfigureAwait(false); }
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(errorCode))
+                    await SendErrorAsync(connection, errorCode, reason).ConfigureAwait(false);
+                await connection.CloseAsync(status, reason).ConfigureAwait(false);
+            }
             catch (WebSocketException) { }
             catch (ObjectDisposedException) { }
         }

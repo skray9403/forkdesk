@@ -107,6 +107,14 @@ public sealed class NativeCoreClient : INativeCoreClient
         return Task.CompletedTask;
     }
 
+    public async Task<bool> ForgetDeviceAsync(string deviceId, CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        var removed = await _host.ForgetDeviceAsync(deviceId, cancellationToken).ConfigureAwait(false);
+        Publish();
+        return removed;
+    }
+
     public async Task FixFirewallAsync(CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);

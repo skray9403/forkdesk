@@ -296,6 +296,24 @@ public sealed class PairingResponder : IAsyncDisposable
         }
     }
 
+    public bool ForgetDevice(string deviceId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(deviceId);
+        lock (_sync)
+        {
+            ThrowIfDisposed();
+            if (_pending?.DeviceId == deviceId)
+            {
+                var pending = _pending;
+                ClearPending();
+                Error(pending.ConnectionId, ProtocolV1.Error.PairRefused,
+                    "This computer forgot the pairing");
+            }
+
+            return _store.Remove(deviceId);
+        }
+    }
+
     private async Task ExpireAsync(string connectionId, CancellationToken cancellationToken)
     {
         try { await Task.Delay(_timeout, cancellationToken).ConfigureAwait(false); }
