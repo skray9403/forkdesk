@@ -59,6 +59,53 @@ jobs:
           if (-not (Test-Path artifacts/win-x64/TwinDesk.exe)) { throw 'TwinDesk.exe missing from x64 publish output.' }
           if (-not (Test-Path artifacts/win-x64/coreclr.dll)) { throw '.NET runtime missing from x64 self-contained output.' }
           if (Test-Path artifacts/win-x64/msedgewebview2.exe) { throw 'Unexpected embedded Edge WebView2 runtime in x64 publish output.' }
+      - name: Smoke test x64 startup and single-instance activation
+        shell: pwsh
+        timeout-minutes: 2
+        run: |
+          $exe = Join-Path (Get-Location) 'artifacts/win-x64/TwinDesk.exe'
+          $logDirectory = Join-Path $env:LOCALAPPDATA 'TwinDesk.Native/Logs'
+          $primary = $null
+          $secondary = $null
+          try {
+            $primary = Start-Process -FilePath $exe -PassThru
+            $deadline = (Get-Date).AddSeconds(45)
+            $started = $false
+            while ((Get-Date) -lt $deadline) {
+              $primary.Refresh()
+              if ($primary.HasExited) { throw "Primary TwinDesk process exited with code $($primary.ExitCode)." }
+              $log = Get-ChildItem $logDirectory -Filter 'TwinDesk-*.log' -ErrorAction SilentlyContinue |
+                Sort-Object LastWriteTime -Descending | Select-Object -First 1
+              if ($log -and (Select-String -Path $log.FullName -Pattern 'Native core startup completed' -Quiet)) {
+                $started = $true
+                break
+              }
+              Start-Sleep -Seconds 1
+            }
+            if (-not $started) { throw 'TwinDesk did not report successful native-core startup within 45 seconds.' }
+
+            $secondary = Start-Process -FilePath $exe -PassThru
+            if (-not $secondary.WaitForExit(12000)) {
+              throw 'Second launch did not hand off to the primary TwinDesk process.'
+            }
+            if ($secondary.ExitCode -ne 0) { throw "Second TwinDesk process exited with code $($secondary.ExitCode)." }
+
+            $primary.Refresh()
+            if ($primary.HasExited) { throw 'Primary TwinDesk process exited after the second launch.' }
+          }
+          finally {
+            if ($secondary) {
+              $secondary.Refresh()
+              if (-not $secondary.HasExited) { Stop-Process -Id $secondary.Id -Force -ErrorAction SilentlyContinue }
+            }
+            if ($primary) {
+              $primary.Refresh()
+              if (-not $primary.HasExited) {
+                [void]$primary.CloseMainWindow()
+                if (-not $primary.WaitForExit(8000)) { Stop-Process -Id $primary.Id -Force -ErrorAction SilentlyContinue }
+              }
+            }
+          }
       - name: Package x64
         shell: pwsh
         run: Compress-Archive -Path artifacts/win-x64/* -DestinationPath artifacts/TwinDesk-windows-x64.zip -Force
