@@ -92,7 +92,13 @@ public sealed class PeerDiscoveryService : IAsyncDisposable
             {
                 StatusChanged?.Invoke(this, $"Discovery send failed: {ex.SocketErrorCode}");
             }
-        } while (await timer.WaitForNextTickAsync(cancellationToken).ConfigureAwait(false));
+        } while (await WaitNextAsync(timer, cancellationToken).ConfigureAwait(false));
+    }
+
+    private static async Task<bool> WaitNextAsync(PeriodicTimer timer, CancellationToken cancellationToken)
+    {
+        try { return await timer.WaitForNextTickAsync(cancellationToken).ConfigureAwait(false); }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { return false; }
     }
 
     private async Task SendBeaconAsync(CancellationToken cancellationToken)
