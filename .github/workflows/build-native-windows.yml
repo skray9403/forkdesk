@@ -1,0 +1,125 @@
+name: Build Native Windows
+
+on:
+  push:
+    branches: [native-windows-foundation, 'native-windows-*']
+    paths:
+      - 'windows-native/**'
+      - '.github/workflows/build-native-windows.yml'
+  pull_request:
+    paths:
+      - 'windows-native/**'
+      - '.github/workflows/build-native-windows.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  core-tests:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Test native core
+        working-directory: windows-native
+        run: dotnet test Tests/TwinDesk.Native.Tests.csproj --configuration Release --logger "trx;LogFileName=native-core.trx" --results-directory TestResults
+      - name: Upload native core test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-core-test-results
+          path: windows-native/TestResults/*.trx
+          if-no-files-found: ignore
+          retention-days: 14
+
+  build:
+    runs-on: windows-2022
+    needs: core-tests
+    defaults:
+      run:
+        working-directory: windows-native
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore x64
+        run: dotnet restore TwinDesk.Native.csproj -r win-x64 -p:SelfContained=true
+      - name: Publish x64
+        run: dotnet publish TwinDesk.Native.csproj --configuration Release --no-restore -r win-x64 -p:Platform=x64 --self-contained true -o artifacts/win-x64
+      - name: Verify x64 publish output
+        shell: pwsh
+        run: |
+          if (-not (Test-Path artifacts/win-x64/TwinDesk.exe)) { throw 'TwinDesk.exe missing from x64 publish output.' }
+          if (-not (Test-Path artifacts/win-x64/coreclr.dll)) { throw '.NET runtime missing from x64 self-contained output.' }
+          if (Test-Path artifacts/win-x64/msedgewebview2.exe) { throw 'Unexpected embedded Edge WebView2 runtime in x64 publish output.' }
+      - name: Smoke test x64 application startup
+        shell: pwsh
+        run: |
+          $exe = (Resolve-Path artifacts/win-x64/TwinDesk.exe).Path
+          $process = Start-Process -FilePath $exe -PassThru
+          $log = Join-Path $env:LOCALAPPDATA ("TwinDesk.Native/Logs/TwinDesk-{0}.log" -f (Get-Date -Format 'yyyyMMdd'))
+          try {
+            $deadline = (Get-Date).AddSeconds(25)
+            $started = $false
+            while ((Get-Date) -lt $deadline) {
+              if ($process.HasExited) {
+                $details = if (Test-Path $log) { Get-Content $log -Raw } else { 'No diagnostic log was created.' }
+                throw "TwinDesk exited during startup with code $($process.ExitCode). $details"
+              }
+              if ((Test-Path $log) -and (Select-String -Path $log -Pattern 'Native core startup completed' -Quiet)) {
+                $started = $true
+                break
+              }
+              Start-Sleep -Seconds 1
+              $process.Refresh()
+            }
+            if (-not $started) {
+              $details = if (Test-Path $log) { Get-Content $log -Raw } else { 'No diagnostic log was created.' }
+              throw "TwinDesk did not report successful native-core startup within 25 seconds. $details"
+            }
+            Write-Host 'TwinDesk process stayed alive and native-core startup completed.'
+          }
+          finally {
+            if ($process -and -not $process.HasExited) {
+              Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+            }
+          }
+      - name: Package x64
+        shell: pwsh
+        run: Compress-Archive -Path artifacts/win-x64/* -DestinationPath artifacts/TwinDesk-windows-x64.zip -Force
+
+      - name: Restore ARM64
+        run: dotnet restore TwinDesk.Native.csproj -r win-arm64 -p:SelfContained=true
+      - name: Publish ARM64
+        run: dotnet publish TwinDesk.Native.csproj --configuration Release --no-restore -r win-arm64 -p:Platform=ARM64 --self-contained true -o artifacts/win-arm64
+      - name: Verify ARM64 publish output
+        shell: pwsh
+        run: |
+          if (-not (Test-Path artifacts/win-arm64/TwinDesk.exe)) { throw 'TwinDesk.exe missing from ARM64 publish output.' }
+          if (-not (Test-Path artifacts/win-arm64/coreclr.dll)) { throw '.NET runtime missing from ARM64 self-contained output.' }
+          if (Test-Path artifacts/win-arm64/msedgewebview2.exe) { throw 'Unexpected embedded Edge WebView2 runtime in ARM64 publish output.' }
+      - name: Package ARM64
+        shell: pwsh
+        run: Compress-Archive -Path artifacts/win-arm64/* -DestinationPath artifacts/TwinDesk-windows-arm64.zip -Force
+
+      - name: Upload x64 build
+        uses: actions/upload-artifact@v4
+        with:
+          name: TwinDesk-Windows-x64
+          path: windows-native/artifacts/TwinDesk-windows-x64.zip
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload ARM64 build
+        uses: actions/upload-artifact@v4
+        with:
+          name: TwinDesk-Windows-ARM64
+          path: windows-native/artifacts/TwinDesk-windows-arm64.zip
+          if-no-files-found: error
+          retention-days: 30

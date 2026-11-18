@@ -1,0 +1,43 @@
+<Page x:Class="TwinDesk.Native.Pages.ClipboardPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+    <ScrollViewer>
+      <StackPanel Padding="32" Spacing="22" MaxWidth="900" HorizontalAlignment="Left">
+        <StackPanel Spacing="4">
+          <TextBlock Text="Clipboard" FontSize="30" FontWeight="SemiBold"/>
+          <TextBlock Text="Share copied text between this Windows PC and your Android device"
+              Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
+        </StackPanel>
+        <InfoBar IsOpen="True" IsClosable="False" Severity="Informational"
+            Title="Text-only clipboard sync"
+            Message="Plain text up to 256 KB is supported. Image and file clipboard transfers are not included yet."/>
+        <Border Padding="22" CornerRadius="12"
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+          <StackPanel Spacing="14">
+            <TextBlock Text="Clipboard sharing" FontSize="20" FontWeight="SemiBold"/>
+            <CheckBox x:Name="EnabledCheckBox" Content="Enable text clipboard sync"
+                Checked="OnOptionChanged" Unchecked="OnOptionChanged"/>
+            <TextBlock Text="Choose which direction is allowed. Sync is off by default."
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
+            <CheckBox x:Name="SendCheckBox" Content="Send copied text from Windows to Android"
+                Checked="OnOptionChanged" Unchecked="OnOptionChanged"/>
+            <CheckBox x:Name="ReceiveCheckBox" Content="Receive copied text from Android on Windows"
+                Checked="OnOptionChanged" Unchecked="OnOptionChanged"/>
+          </StackPanel>
+        </Border>
+        <Border Padding="22" CornerRadius="12"
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+          <StackPanel Spacing="8">
+            <TextBlock Text="Status" FontSize="18" FontWeight="SemiBold"/>
+            <TextBlock x:Name="StatusText" Text="Loading clipboard status…" TextWrapping="Wrap"/>
+            <TextBlock x:Name="ConnectionText" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
+            <TextBlock x:Name="LastActivityText" FontSize="12" Foreground="{ThemeResource TextFillColorTertiaryBrush}" TextWrapping="Wrap"/>
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
+</Page>

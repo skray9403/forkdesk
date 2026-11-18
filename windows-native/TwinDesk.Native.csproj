@@ -1,0 +1,26 @@
+<!-- Native Windows client. No Electron, Chromium renderer, HTML or JavaScript UI. -->
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
+    <RootNamespace>TwinDesk.Native</RootNamespace>
+    <AssemblyName>TwinDesk</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <UseWinUI>true</UseWinUI>
+    <EnableMsixTooling>true</EnableMsixTooling>
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <Platforms>x64;ARM64</Platforms>
+    <EnableDefaultCompileItems>true</EnableDefaultCompileItems>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="Core/**/*.cs" />
+    <Compile Remove="Tests/**/*.cs" />
+    <ProjectReference Include="Core/TwinDesk.Native.Core.csproj" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.6.5" />
+    <Content Include="Firewall\AllowFirewall.ps1" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

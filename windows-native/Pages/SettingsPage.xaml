@@ -1,0 +1,58 @@
+<Page x:Class="TwinDesk.Native.Pages.SettingsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+    <ScrollViewer>
+      <StackPanel Padding="32" Spacing="20" MaxWidth="900" HorizontalAlignment="Left">
+        <StackPanel Spacing="4">
+          <TextBlock Text="Settings" FontSize="30" FontWeight="SemiBold"/>
+          <TextBlock Text="Windows-specific preferences" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+        </StackPanel>
+        <Border Padding="22" CornerRadius="12"
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+          <StackPanel Spacing="14">
+            <TextBlock Text="Startup and background behavior" FontSize="18" FontWeight="SemiBold"/>
+            <ToggleSwitch x:Name="StartupToggle"
+                Header="Start TwinDesk when I sign in"
+                Toggled="StartupToggle_Toggled"/>
+            <TextBlock x:Name="StartupStatusText"
+                Text="Loading startup preference…"
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                TextWrapping="Wrap"/>
+            <TextBlock x:Name="StartupPathText"
+                FontSize="12"
+                Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                TextWrapping="Wrap"/>
+            <ToggleSwitch Header="Keep TwinDesk running in the notification area"
+                IsOn="False" IsEnabled="False"/>
+            <TextBlock Text="Minimize-to-tray is not enabled yet. Closing the window currently exits the app."
+                FontSize="12" Foreground="{ThemeResource TextFillColorTertiaryBrush}" TextWrapping="Wrap"/>
+          </StackPanel>
+        </Border>
+        <Border Padding="22" CornerRadius="12"
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+          <StackPanel Spacing="10">
+            <TextBlock Text="Diagnostics" FontSize="18" FontWeight="SemiBold"/>
+            <TextBlock Text="Startup and native service errors are written to a local log. Clipboard text, pairing codes and authentication tokens are not logged."
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
+            <TextBlock x:Name="LogPathText"
+                FontSize="12" Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                TextWrapping="Wrap"/>
+          </StackPanel>
+        </Border>
+        <Border Padding="22" CornerRadius="12"
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+          <StackPanel Spacing="10">
+            <TextBlock Text="Supported peer platforms" FontSize="18" FontWeight="SemiBold"/>
+            <TextBlock Text="Android phones and Windows PCs"/>
+            <TextBlock Text="The native Windows edition will not include macOS, Linux or iOS peer implementations."
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
+</Page>

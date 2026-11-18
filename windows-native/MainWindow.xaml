@@ -1,0 +1,25 @@
+<Window x:Class="TwinDesk.Native.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="TwinDesk">
+  <NavigationView x:Name="RootNavigation"
+      IsBackButtonVisible="Collapsed" IsSettingsVisible="False"
+      PaneDisplayMode="Left" OpenPaneLength="250" CompactPaneLength="56"
+      SelectionChanged="OnSelectionChanged">
+    <NavigationView.MenuItems>
+      <NavigationViewItem Content="Overview" Tag="overview"><NavigationViewItem.Icon><SymbolIcon Symbol="Home"/></NavigationViewItem.Icon></NavigationViewItem>
+      <NavigationViewItem Content="Android device" Tag="android"><NavigationViewItem.Icon><SymbolIcon Symbol="CellPhone"/></NavigationViewItem.Icon></NavigationViewItem>
+      <NavigationViewItem Content="Files" Tag="files"><NavigationViewItem.Icon><SymbolIcon Symbol="Folder"/></NavigationViewItem.Icon></NavigationViewItem>
+      <NavigationViewItem Content="Clipboard" Tag="clipboard"><NavigationViewItem.Icon><SymbolIcon Symbol="Copy"/></NavigationViewItem.Icon></NavigationViewItem>
+      <NavigationViewItem Content="Screen" Tag="screen"><NavigationViewItem.Icon><SymbolIcon Symbol="View"/></NavigationViewItem.Icon></NavigationViewItem>
+      <NavigationViewItem Content="Remote input" Tag="remote"><NavigationViewItem.Icon><SymbolIcon Symbol="Keyboard"/></NavigationViewItem.Icon></NavigationViewItem>
+      <NavigationViewItem Content="Audio" Tag="audio"><NavigationViewItem.Icon><SymbolIcon Symbol="Volume"/></NavigationViewItem.Icon></NavigationViewItem>
+      <NavigationViewItem Content="Notifications" Tag="notifications"><NavigationViewItem.Icon><SymbolIcon Symbol="Message"/></NavigationViewItem.Icon></NavigationViewItem>
+    </NavigationView.MenuItems>
+    <NavigationView.FooterMenuItems>
+      <NavigationViewItem Content="Settings" Tag="settings"><NavigationViewItem.Icon><SymbolIcon Symbol="Setting"/></NavigationViewItem.Icon></NavigationViewItem>
+      <NavigationViewItem Content="About" Tag="about"><NavigationViewItem.Icon><SymbolIcon Symbol="Help"/></NavigationViewItem.Icon></NavigationViewItem>
+    </NavigationView.FooterMenuItems>
+    <NavigationView.Content><Frame x:Name="ContentFrame"/></NavigationView.Content>
+  </NavigationView>
+</Window>

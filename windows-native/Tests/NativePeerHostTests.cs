@@ -1,0 +1,272 @@
+using System.Net.WebSockets;
+using System.Text.Json;
+using TwinDesk.Native.Core;
+using Xunit;
+
+namespace TwinDesk.Native.Tests;
+
+public sealed class NativePeerHostTests
+{
+    [Fact]
+    public async Task AndroidPeerCanPairAndAuthenticateOverPinnedTlsWebSocket()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "TwinDesk.Native.Tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        using var identity = new NativeIdentityStore(root).LoadOrCreate("Test Windows PC");
+        await using var host = new NativePeerHost(identity, root, port: 0);
+        using var client = new ClientWebSocket();
+        client.Options.RemoteCertificateValidationCallback = static (_, _, _, _) => true;
+        Exception? serverError = null;
+        host.TransportError += ex => serverError = ex;
+
+        try
+        {
+            await host.StartAsync();
+            Assert.InRange(host.Port, 1, 65535);
+            try
+            {
+                await client.ConnectAsync(new Uri($"wss://127.0.0.1:{host.Port}/"), CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException($"TLS connection failed. Server-side error: {serverError}", ex);
+            }
+
+            const string phoneId = "android-test-device";
+            const string phoneName = "Pixel test phone";
+            var phoneNonce = ProtocolCrypto.RandomHex(16);
+            await SendAsync(client, new
+            {
+                t = ProtocolV1.Message.PairStart,
+                v = ProtocolV1.Version,
+                id = phoneId,
+                name = phoneName,
+                os = ProtocolV1.PeerOs.Android,
+                commit = ProtocolCrypto.CommitOf(phoneNonce)
+            });
+
+            using var nonceMessage = await ReceiveAsync(client);
+            Assert.Equal(ProtocolV1.Message.PairNonce, nonceMessage.RootElement.GetProperty("t").GetString());
+            var hostNonce = nonceMessage.RootElement.GetProperty("nonce").GetString()!;
+            Assert.Equal(32, hostNonce.Length);
+
+            await SendAsync(client, new { t = ProtocolV1.Message.PairReveal, nonce = phoneNonce });
+            await WaitUntilAsync(() => host.PendingPairing?.ShortAuthenticationCode.Length == 6);
+            var expectedCode = ProtocolCrypto.SasCode(identity.Fingerprint, phoneNonce, hostNonce);
+            Assert.Equal(expectedCode, host.PendingPairing?.ShortAuthenticationCode);
+
+            await SendAsync(client, new { t = ProtocolV1.Message.PairConfirm });
+            await WaitUntilAsync(() => host.PendingPairing?.IsConfirmed == true);
+            host.ApprovePairing(true);
+
+            using var pairOk = await ReceiveAsync(client);
+            Assert.Equal(ProtocolV1.Message.PairOk, pairOk.RootElement.GetProperty("t").GetString());
+            var token = pairOk.RootElement.GetProperty("token").GetString()!;
+            Assert.Equal(64, token.Length);
+
+            await SendAsync(client, new
+            {
+                t = ProtocolV1.Message.Hello,
+                v = ProtocolV1.Version,
+                id = phoneId,
+                name = phoneName,
+                os = ProtocolV1.PeerOs.Android,
+                token
+            });
+
+            using var welcome = await ReceiveAsync(client);
+            Assert.Equal(ProtocolV1.Message.Welcome, welcome.RootElement.GetProperty("t").GetString());
+            Assert.Equal(identity.Id, welcome.RootElement.GetProperty("macId").GetString());
+            Assert.Equal(ProtocolV1.PeerOs.Windows, welcome.RootElement.GetProperty("os").GetString());
+            Assert.Equal(phoneId, host.ConnectedDevice?.Id);
+            var resumeKey = welcome.RootElement.GetProperty("resume").GetString();
+            Assert.False(string.IsNullOrWhiteSpace(resumeKey));
+
+            using var resumedClient = new ClientWebSocket();
+            resumedClient.Options.RemoteCertificateValidationCallback = static (_, _, _, _) => true;
+            await resumedClient.ConnectAsync(new Uri($"wss://127.0.0.1:{host.Port}/"), CancellationToken.None);
+            await SendAsync(resumedClient, new
+            {
+                t = ProtocolV1.Message.Hello,
+                v = ProtocolV1.Version,
+                id = phoneId,
+                name = phoneName,
+                os = ProtocolV1.PeerOs.Android,
+                resume = resumeKey
+            });
+
+            using var resumedWelcome = await ReceiveUntilAsync(resumedClient,
+                rootElement => rootElement.TryGetProperty("t", out var t) &&
+                               t.GetString() == ProtocolV1.Message.Welcome);
+            Assert.True(resumedWelcome.RootElement.GetProperty("resumed").GetBoolean());
+
+            await SendAsync(resumedClient, new { t = ProtocolV1.Message.Ping, ts = 654321L });
+            using var resumedPong = await ReceiveUntilAsync(resumedClient,
+                rootElement => rootElement.TryGetProperty("t", out var t) &&
+                               t.GetString() == ProtocolV1.Message.Pong);
+            Assert.Equal(654321L, resumedPong.RootElement.GetProperty("ts").GetInt64());
+
+            // Simulate the new Wi-Fi transport closing normally. The server must
+            // promote the original connection instead of ending the authenticated session.
+            await resumedClient.CloseAsync(WebSocketCloseStatus.NormalClosure, "test fallback", CancellationToken.None);
+            await WaitUntilAsync(() => host.ConnectedDevice?.Id == phoneId);
+            await SendAsync(client, new { t = ProtocolV1.Message.Ping, ts = 123456L });
+            using var pong = await ReceiveUntilAsync(client,
+                rootElement => rootElement.TryGetProperty("t", out var t) &&
+                               t.GetString() == ProtocolV1.Message.Pong);
+            Assert.Equal(123456L, pong.RootElement.GetProperty("ts").GetInt64());
+            Assert.Equal(phoneId, host.ConnectedDevice?.Id);
+
+            await SendAsync(client, new { t = ProtocolV1.Message.Bye });
+            await WaitUntilAsync(() => host.ConnectedDevice is null);
+            Assert.False(host.IsPhoneGraceActive);
+            Assert.True(await host.ForgetDeviceAsync(phoneId));
+            Assert.DoesNotContain(host.PairedDevices, device => device.Id == phoneId);
+        }
+        finally
+        {
+            client.Dispose();
+            await host.DisposeAsync();
+            if (Directory.Exists(root))
+                Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task UnexpectedAndroidDisconnectBlocksWindowsUntilPhoneGraceExpires()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "TwinDesk.Native.Tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        using var identity = new NativeIdentityStore(root).LoadOrCreate("Test Windows PC");
+
+        const string phoneId = "android-grace-device";
+        const string phoneToken = "phone-grace-token";
+        const string windowsId = "windows-grace-device";
+        const string windowsToken = "windows-grace-token";
+        var now = DateTimeOffset.UtcNow;
+        var store = new JsonPairedDeviceStore(Path.Combine(root, "paired.json"));
+        store.Upsert(new PairedDevice(phoneId, "Pixel phone", "android",
+            ProtocolCrypto.Sha256Hex(phoneToken), now, now));
+        store.Upsert(new PairedDevice(windowsId, "Other PC", "win",
+            ProtocolCrypto.Sha256Hex(windowsToken), now, now));
+
+        await using var host = new NativePeerHost(
+            identity, root, port: 0, phoneGraceDuration: TimeSpan.FromMilliseconds(500));
+        using var phoneClient = new ClientWebSocket();
+        phoneClient.Options.RemoteCertificateValidationCallback = static (_, _, _, _) => true;
+        using var windowsClient = new ClientWebSocket();
+        windowsClient.Options.RemoteCertificateValidationCallback = static (_, _, _, _) => true;
+
+        try
+        {
+            await host.StartAsync();
+            var uri = new Uri($"wss://127.0.0.1:{host.Port}/");
+            await phoneClient.ConnectAsync(uri, CancellationToken.None);
+            await SendAsync(phoneClient, new
+            {
+                t = ProtocolV1.Message.Hello,
+                v = ProtocolV1.Version,
+                id = phoneId,
+                name = "Pixel phone",
+                os = ProtocolV1.PeerOs.Android,
+                token = phoneToken
+            });
+
+            using var phoneWelcome = await ReceiveUntilAsync(phoneClient,
+                element => element.TryGetProperty("t", out var type) &&
+                           type.GetString() == ProtocolV1.Message.Welcome);
+            Assert.Equal(phoneId, host.ConnectedDevice?.Id);
+
+            // A dropped socket, without protocol bye, must retain the phone's session claim.
+            phoneClient.Abort();
+            await WaitUntilAsync(() => host.IsPhoneGraceActive);
+            Assert.Equal(phoneId, host.PhoneGraceDeviceId);
+
+            await windowsClient.ConnectAsync(uri, CancellationToken.None);
+            await SendAsync(windowsClient, new
+            {
+                t = ProtocolV1.Message.Hello,
+                v = ProtocolV1.Version,
+                id = windowsId,
+                name = "Other PC",
+                os = ProtocolV1.PeerOs.Windows,
+                token = windowsToken
+            });
+
+            using var busy = await ReceiveUntilAsync(windowsClient,
+                element => element.TryGetProperty("t", out var type) &&
+                           type.GetString() == ProtocolV1.Message.Error);
+            Assert.Equal(ProtocolV1.Error.Busy, busy.RootElement.GetProperty("code").GetString());
+            Assert.Null(host.ConnectedDevice);
+
+            await WaitUntilAsync(() => !host.IsPhoneGraceActive);
+            await SendAsync(windowsClient, new
+            {
+                t = ProtocolV1.Message.Hello,
+                v = ProtocolV1.Version,
+                id = windowsId,
+                name = "Other PC",
+                os = ProtocolV1.PeerOs.Windows,
+                token = windowsToken
+            });
+
+            using var windowsWelcome = await ReceiveUntilAsync(windowsClient,
+                element => element.TryGetProperty("t", out var type) &&
+                           type.GetString() == ProtocolV1.Message.Welcome);
+            Assert.Equal(windowsId, host.ConnectedDevice?.Id);
+        }
+        finally
+        {
+            phoneClient.Dispose();
+            windowsClient.Dispose();
+            await host.DisposeAsync();
+            if (Directory.Exists(root))
+                Directory.Delete(root, recursive: true);
+        }
+    }
+
+    private static async Task SendAsync<T>(ClientWebSocket socket, T payload)
+    {
+        var bytes = JsonSerializer.SerializeToUtf8Bytes(payload);
+        await socket.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text,
+            endOfMessage: true, CancellationToken.None);
+    }
+
+    private static async Task<JsonDocument> ReceiveAsync(ClientWebSocket socket) =>
+        await ReceiveUntilAsync(socket, _ => true);
+
+    private static async Task<JsonDocument> ReceiveUntilAsync(
+        ClientWebSocket socket,
+        Func<JsonElement, bool> predicate)
+    {
+        var buffer = new byte[64 * 1024];
+        while (true)
+        {
+            using var stream = new MemoryStream();
+            WebSocketReceiveResult result;
+            do
+            {
+                result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+                if (result.MessageType == WebSocketMessageType.Close)
+                    throw new IOException("WebSocket closed while a test response was expected.");
+                stream.Write(buffer, 0, result.Count);
+            } while (!result.EndOfMessage);
+
+            var document = JsonDocument.Parse(stream.ToArray());
+            if (predicate(document.RootElement))
+                return document;
+            document.Dispose();
+        }
+    }
+
+    private static async Task WaitUntilAsync(Func<bool> condition)
+    {
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
+        while (DateTime.UtcNow < deadline)
+        {
+            if (condition()) return;
+            await Task.Delay(10);
+        }
+        Assert.True(condition(), "Timed out waiting for the native peer host state.");
+    }
+}
