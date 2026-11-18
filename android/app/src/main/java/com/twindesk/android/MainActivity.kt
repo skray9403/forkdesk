@@ -80,7 +80,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.LargeTopAppBar
+import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.animation.core.FiniteAnimationSpec
@@ -613,7 +613,15 @@ fun App(core: Core, resumed: Int) {
                                     }
                                     for (t in BOTTOM) {
                                         item(
-                                            if (t == Tab.Connection) tr("Connect") else tr(t.title),
+                                            when (t) {
+                                                Tab.Overview -> tr("Home")
+                                                Tab.Connection -> tr("Connect")
+                                                Tab.FileAccess -> tr("Files")
+                                                Tab.Clipboard -> tr("Clip")
+                                                Tab.Notifications -> tr("Alerts")
+                                                Tab.Keyboard -> tr("Keys")
+                                                else -> tr(t.title)
+                                            },
                                             t.icon,
                                             !more && tab == t,
                                             isOn(core, t),
@@ -840,7 +848,7 @@ private fun TopIdentity(core: Core, v: Int) {
     Box(Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 14.dp)) { Identity(core, v, 36) }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun MoreList(core: Core, v: Int, BOTTOM: List<Tab>, modifier: Modifier, go: (Tab) -> Unit) {
     @Suppress("UNUSED_EXPRESSION") v
@@ -860,7 +868,7 @@ private fun MoreList(core: Core, v: Int, BOTTOM: List<Tab>, modifier: Modifier, 
         containerColor = scheme.surface,
         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
         topBar = {
-            LargeTopAppBar(
+            LargeFlexibleTopAppBar(
                 title = {
                     Text(
                         tr("Settings"),
