@@ -16,12 +16,21 @@ public sealed class NativePeerHostTests
         await using var host = new NativePeerHost(identity, root, port: 0);
         using var client = new ClientWebSocket();
         client.Options.RemoteCertificateValidationCallback = static (_, _, _, _) => true;
+        Exception? serverError = null;
+        host.TransportError += ex => serverError = ex;
 
         try
         {
             await host.StartAsync();
             Assert.InRange(host.Port, 1, 65535);
-            await client.ConnectAsync(new Uri($"wss://127.0.0.1:{host.Port}/"), CancellationToken.None);
+            try
+            {
+                await client.ConnectAsync(new Uri($"wss://127.0.0.1:{host.Port}/"), CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException($"TLS connection failed. Server-side error: {serverError}", ex);
+            }
 
             const string phoneId = "android-test-device";
             const string phoneName = "Pixel test phone";
@@ -79,6 +88,8 @@ public sealed class NativePeerHostTests
         }
         finally
         {
+            client.Dispose();
+            await host.DisposeAsync();
             if (Directory.Exists(root))
                 Directory.Delete(root, recursive: true);
         }

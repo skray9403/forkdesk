@@ -24,6 +24,7 @@ public sealed class NativePeerHost : IAsyncDisposable
     private bool _disposed;
 
     public event Action? StateChanged;
+    public event Action<Exception>? TransportError;
     public event Func<PairedDevice, string, JsonElement, Task>? AuthenticatedMessageReceived;
 
     public bool IsListening => _transport.IsListening;
@@ -48,6 +49,7 @@ public sealed class NativePeerHost : IAsyncDisposable
 
         _transport.TextReceived += HandleTextAsync;
         _transport.ConnectionClosed += HandleConnectionClosed;
+        _transport.ConnectionError += ex => TransportError?.Invoke(ex);
         _pairing.MessageReady += SendPairingMessage;
         _pairing.PromptChanged += _ => StateChanged?.Invoke();
         _pairing.CloseConnectionRequested += CloseConnection;
@@ -383,6 +385,7 @@ public sealed class NativePeerHost : IAsyncDisposable
         lock (_sessionSync) _active = null;
         _sessions.Clear();
         StateChanged = null;
+        TransportError = null;
         AuthenticatedMessageReceived = null;
     }
 

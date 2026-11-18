@@ -35,6 +35,7 @@ public sealed class TlsWebSocketServer : IAsyncDisposable
 
     public event Func<TlsWebSocketConnection, string, Task>? TextReceived;
     public event Action<TlsWebSocketConnection>? ConnectionClosed;
+    public event Action<Exception>? ConnectionError;
 
     public bool IsListening => _listener is not null;
     public int Port => (_listener?.LocalEndpoint as IPEndPoint)?.Port ?? _port;
@@ -132,10 +133,11 @@ public sealed class TlsWebSocketServer : IAsyncDisposable
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
         catch (WebSocketException) { }
-        catch (AuthenticationException) { }
-        catch (IOException) { }
-        catch (SocketException) { }
-        catch (InvalidDataException) { }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+        catch (Exception ex)
+        {
+            try { ConnectionError?.Invoke(ex); } catch { }
+        }
         finally
         {
             if (connection is not null)
@@ -301,6 +303,7 @@ public sealed class TlsWebSocketServer : IAsyncDisposable
         stop?.Dispose();
         TextReceived = null;
         ConnectionClosed = null;
+        ConnectionError = null;
     }
 }
 
