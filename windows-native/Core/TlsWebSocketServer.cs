@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
+using System.Net.Security;
 using System.Net.WebSockets;
 using System.Security.Authentication;
 using System.Security.Cryptography;
@@ -85,10 +86,10 @@ public sealed class TlsWebSocketServer : IAsyncDisposable
             var handler = HandleClientAsync(id, client, cancellationToken);
             _handlers[id] = handler;
             _ = handler.ContinueWith(
-                _ =>
+                completed =>
                 {
-                    _handlers.TryRemove(id, out _);
-                    _clients.TryRemove(id, out _);
+                    _handlers.TryRemove(id, out var ignoredTask);
+                    _clients.TryRemove(id, out var ignoredClient);
                 },
                 CancellationToken.None,
                 TaskContinuationOptions.ExecuteSynchronously,
@@ -152,7 +153,7 @@ public sealed class TlsWebSocketServer : IAsyncDisposable
         using var buffer = new MemoryStream();
         var oneByte = new byte[1];
         var matched = 0;
-        ReadOnlySpan<byte> terminator = [13, 10, 13, 10];
+        byte[] terminator = [13, 10, 13, 10];
 
         while (buffer.Length < MaxHandshakeBytes)
         {
