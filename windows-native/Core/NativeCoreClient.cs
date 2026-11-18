@@ -1,3 +1,4 @@
+using System.Net.Sockets;
 using TwinDesk.Native.Core.Discovery;
 
 namespace TwinDesk.Native.Core;
