@@ -97,7 +97,7 @@ public sealed class NativeIdentityStore
                 }
             }
 
-            var certificate = new X509Certificate2(
+            var certificate = X509CertificateLoader.LoadPkcs12(
                 pfxBytes,
                 passphrase,
                 X509KeyStorageFlags.Exportable | X509KeyStorageFlags.EphemeralKeySet);
@@ -135,7 +135,7 @@ public sealed class NativeIdentityStore
         }
 
         var id = Guid.NewGuid().ToString("D").ToLowerInvariant();
-        var payload = JsonSerializer.SerializeToUtf8Bytes(new DeviceRecord(id));
+        var payload = JsonSerializer.SerializeToUtf8Bytes(new { id });
         WriteAtomically(devicePath, payload);
         return id;
     }
@@ -179,7 +179,6 @@ public sealed class NativeIdentityStore
         }
     }
 
-    private sealed record DeviceRecord(string Id);
 }
 
 /// <summary>DPAPI CurrentUser protector for small secrets such as the PFX password.</summary>
