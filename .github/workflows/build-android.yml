@@ -8,9 +8,9 @@ on:
         required: false
         default: ''
       ref:
-        description: Branch to build (a test branch; releases come from main).
+        description: Optional branch override; blank builds the branch selected above.
         required: false
-        default: main
+        default: ''
 
 # Write: the files can go straight onto a release.
 permissions:
@@ -24,7 +24,7 @@ jobs:
       # main unless another branch is asked for (ref), whichever branch the run was started from.
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.ref || 'main' }}
+          ref: ${{ inputs.ref || github.ref }}
 
       - uses: actions/setup-java@v4
         with:
