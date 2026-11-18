@@ -4,7 +4,9 @@
     xmlns:controls="using:Microsoft.UI.Xaml.Controls">
   <Application.Resources>
     <ResourceDictionary>
-      <controls:XamlControlsResources />
+      <ResourceDictionary.MergedDictionaries>
+        <controls:XamlControlsResources />
+      </ResourceDictionary.MergedDictionaries>
     </ResourceDictionary>
   </Application.Resources>
 </Application>
