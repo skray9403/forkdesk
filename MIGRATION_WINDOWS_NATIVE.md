@@ -371,7 +371,7 @@ The TwinDesk Android app communicates over two distinct channels:
 
 ---
 
-## 9. Phase 4: Native USB/ADB Wired Supervisor & End-to-End Pairing Verification
+## 8. Phase 4: Native USB/ADB Wired Supervisor & End-to-End Pairing Verification
 
 ### A. Problem Analysis & Rationale
 While Wi-Fi pairing via UDP discovery and WSS was implemented, users connecting their Android device via USB cable (with ADB enabled) experienced connection difficulty because the legacy Node.js/Electron application utilized a background supervisor (`windows/wired.js` / `mac/wired.js`) that had not yet been ported to native C#. 
@@ -418,7 +418,7 @@ In the legacy architecture:
 
 ---
 
-## 8. Phase 5: Device Telemetry & Remote Controls
+## 9. Phase 5: Device Telemetry & Remote Controls
 
 ### A. Architectural Overview
 To achieve feature parity with the original TwinDesk Android-to-host controls without introducing web bloat, native IPC command handlers and telemetry parsers were added directly to `NativeCoreClient.cs`:
@@ -434,7 +434,7 @@ To achieve feature parity with the original TwinDesk Android-to-host controls wi
 
 ---
 
-## 9. Feature Parity Matrix (Native Windows vs Original TwinDesk)
+## 10. Feature Parity Matrix (Native Windows vs Original TwinDesk)
 
 | Feature Category | Original TwinDesk (Electron) | ForkDesk Windows Native (WinUI 3) | Parity Status | Architectural Advantage / Note |
 | :--- | :--- | :--- | :--- | :--- |
