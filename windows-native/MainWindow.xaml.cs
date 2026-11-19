@@ -51,9 +51,13 @@ public sealed partial class MainWindow : Window
             case "android": ContentFrame.Navigate(typeof(AndroidPage), _core); break;
             case "files": ContentFrame.Navigate(typeof(FilesPage), _core); break;
             case "clipboard": ContentFrame.Navigate(typeof(ClipboardPage), _core); break;
+            case "screen": ContentFrame.Navigate(typeof(ScreenPage), _core); break;
+            case "remote": ContentFrame.Navigate(typeof(RemotePage), _core); break;
+            case "audio": ContentFrame.Navigate(typeof(AudioPage), _core); break;
+            case "notifications": ContentFrame.Navigate(typeof(NotificationsPage), _core); break;
             case "settings": ContentFrame.Navigate(typeof(SettingsPage)); break;
             case "about": ContentFrame.Navigate(typeof(AboutPage), _core); break;
-            default: ContentFrame.Navigate(typeof(FeaturePage), tag); break;
+            default: ContentFrame.Navigate(typeof(OverviewPage), _core); break;
         }
     }
 }

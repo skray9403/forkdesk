@@ -288,3 +288,84 @@ Upon push or `workflow_dispatch` to `main` or `native-windows-*`, the GitHub Act
 ### D. Single-Instance Handoff Verification
 * **Test:** Launching a second `TwinDesk.exe` while primary instance is active.
 * **Result:** Secondary instance connects via named pipe `TwinDesk.Native.Activation`, signals activation to primary window, and exits immediately with code `0`. Primary process remains responsive.
+
+---
+
+## 9. Navigation Crash & Android Pairing Remediation
+
+### A. Resolution of the `0xc0000005` Navigation Crash
+1. **Root Cause Analysis:**
+   - Navigating to sidebar items "Screen", "Remote input", "Audio", and "Notifications" previously invoked `ContentFrame.Navigate(typeof(FeaturePage), tag)` in `MainWindow.xaml.cs`.
+   - `FeaturePage.cs` was a pure C# class deriving from `Page` without an associated `.xaml` declaration.
+   - WinUI 3's `Frame.Navigate` queries the native XAML metadata provider (`IXamlMetadataProvider.GetXamlType(type)`). Because `FeaturePage` lacked XAML compilation artifacts, it returned `nullptr`, triggering an unhandled C++ access violation (`0xc0000005`) in `coreclr.dll` / `Microsoft.ui.xaml.dll`.
+2. **Implementation of Dedicated Native XAML Pages:**
+   - Deleted `FeaturePage.cs`.
+   - Implemented four dedicated XAML pages with full WinUI 3 markup and code-behind:
+     - **`ScreenPage` (`ScreenPage.xaml` / `ScreenPage.xaml.cs`):** Hardware-accelerated screen mirroring controls. Features auto-detection of local `scrcpy` executables (`scrcpy-win64-v2.4`, app directory, system PATH), configurable max resolution (1080p, 1440p, 720p, Native), target frame rates (60/30 FPS), video bitrates (8/4/2 Mbps), phone screen-off toggle, and keep-awake settings.
+     - **`RemotePage` (`RemotePage.xaml` / `RemotePage.xaml.cs`):** Direct Win32 input injection via `user32.dll` `SendInput`. Handles mouse pointer motion (`remote.mm`), button down/up (`remote.md` / `remote.mu`), mouse wheel scrolling (`remote.wh`), and Unicode typing (`remote.text`) with zero browser overhead. Includes pointer sensitivity multiplier slider (0.5x–2.5x), motion smoothing, and tap-to-click.
+     - **`AudioPage` (`AudioPage.xaml` / `AudioPage.xaml.cs`):** Audio routing controls requesting playback via `phone.sound.want`, playback volume slider, and Windows Bluetooth A2DP audio receiver status.
+     - **`NotificationsPage` (`NotificationsPage.xaml` / `NotificationsPage.xaml.cs`):** Real-time incoming phone alerts feed. Displays app name, title, body, and timestamp. Features bidirectional notification dismissal sending `notif.dismiss` back to Android to clear alerts from the phone notification shade.
+   - Updated `MainWindow.xaml.cs` to navigate cleanly to each respective XAML-backed page type.
+
+---
+
+## 10. Android Companion Pairing Protocol & Invite Engine
+
+### A. Protocol-v1 Pairing Handshake Architecture
+The TwinDesk Android app communicates over two distinct channels:
+1. **Discovery (UDP Port 47801):** Listens for beacons (`t: "beacon"`), probes (`t: "probe"`), and invites (`t: "invite"`).
+2. **Session / Pairing (TLS Port 47800):** Establishes an encrypted WebSocket stream using a self-signed ECDSA certificate pinned during pairing.
+
+```
+       Windows PC                                        Android Phone
+  (TwinDesk.Native)                                  (com.twindesk.android)
+          |                                                    |
+          |  1. UDP Invite (`t: "invite"`, port 47801)        |
+          |--------------------------------------------------->|
+          |                                                    |  (Shows "Pair" prompt /
+          |                                                    |   Notification)
+          |  2. TLS WSS Connection (Port 47800)                |
+          |<===================================================|
+          |  3. `pair.start` (id, name, commitment: H(nw))     |
+          |<---------------------------------------------------|
+          |  4. `pair.nonce` (nonce: nh)                       |
+          |--------------------------------------------------->|
+          |  5. `pair.reveal` (nonce: nw)                      |
+          |<---------------------------------------------------|
+          |                                                    |
+          |  [Both compute SAS = H(fingerprint || nw || nh)]  |
+          |  [Both display matching 6-digit verification code] |
+          |                                                    |
+          |  6. `pair.confirm` (phone confirms matching code)  |
+          |<---------------------------------------------------|
+          |  7. User clicks "Approve pairing" on PC UI         |
+          |  8. `pair.ok` (token, macId, macName, os: "win")   |
+          |--------------------------------------------------->|
+          |                                                    |
+          |  9. `hello` (id, token, resume key)                |
+          |<---------------------------------------------------|
+          | 10. `welcome` (session active)                     |
+          |--------------------------------------------------->|
+```
+
+### B. Implementation Details
+1. **UDP Invite Dispatcher (`PeerDiscoveryService.cs`):**
+   - Added `SendInviteAsync(IPAddress address)`: Constructs a JSON invite datagram containing `{ t: "invite", v: 1, id, name, os: "win", role: "host", port: 47800, fp }` and unicasts it directly to the target device's IP while broadcasting to local subnets.
+   - Added `SendInviteToAddressAsync(string addressOrHost)`: Resolves hostnames or parses IP strings to support direct pairing across subnets.
+2. **Core Client Pairing Facade (`NativeCoreClient.cs`):**
+   - Replaced `NotSupportedException` in `PairAsync(peerId)` with discovery snapshot lookup and UDP invite dispatch.
+   - Added `PairByAddressAsync(string address)` allowing users to manually connect by entering their phone's IP address (essential when router AP isolation prevents UDP multicast discovery).
+3. **User Interface Integration:**
+   - **`AndroidPage.xaml` / `AndroidPage.xaml.cs`:**
+     - Discovered Android devices now include an interactive "Pair with device" (or "Connect") button.
+     - Added a dedicated "Pair by phone IP address" card with input box and "Send Pairing Invite" button.
+   - **`OverviewPage.xaml` / `OverviewPage.xaml.cs`:**
+     - Discovered nearby devices list now includes a direct "Pair" action button for instant pairing from the home dashboard.
+4. **Firewall Rule Recognition (`NativeFirewallAccessService.cs`):**
+   - Updated `HasAllowRule` to properly match executable-wide allow rules (`rule.Protocol == Any`, `rule.LocalPorts == Any` / `*`) and handle bitwise active network profiles (`(rule.Profiles & activeProfiles) != 0`).
+   - Updated `installer.nsi` to register both TCP 47800 and UDP 47801 rules in Windows Defender Firewall.
+5. **Quality Assurance & Verification:**
+   - Expanded test suite with `FeatureServicesTests.cs` verifying `NativeRemoteInputService`, `NativeNotificationService`, and `NativeAudioRoutingService`.
+   - **43 unit tests** passing with 0 failures.
+   - Complete WinUI 3 release build verified (`TwinDesk.dll`, `0 Warning(s), 0 Error(s)`).
+

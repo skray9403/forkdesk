@@ -85,14 +85,51 @@ public sealed partial class OverviewPage : Page
             var item = new StackPanel { Spacing = 3 };
             item.Children.Add(new TextBlock { Text = peer.Name, FontSize = 15, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
             item.Children.Add(new TextBlock { Text = $"{peer.Platform} · {peer.Address}:{peer.Port}" });
-            item.Children.Add(new TextBlock { Text = $"Last seen {peer.LastSeen.ToLocalTime():HH:mm:ss} · Not paired", FontSize = 12 });
+            item.Children.Add(new TextBlock { Text = $"Last seen {peer.LastSeen.ToLocalTime():HH:mm:ss} · {(peer.IsPaired ? "Paired" : "Not paired")}", FontSize = 12 });
+
+            var pairButton = new Button
+            {
+                Content = peer.IsPaired ? "Connect" : "Pair",
+                Tag = peer.Id,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            pairButton.Click += PeerPair_Click;
+
+            var row = new Grid { ColumnSpacing = 12 };
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            row.Children.Add(item);
+            Grid.SetColumn(pairButton, 1);
+            row.Children.Add(pairButton);
+
             NearbyPeersPanel.Children.Add(new Border
             {
                 Padding = new Thickness(14),
                 CornerRadius = new CornerRadius(10),
                 BorderThickness = new Thickness(1),
-                Child = item
+                Child = row
             });
+        }
+    }
+
+    private async void PeerPair_Click(object sender, RoutedEventArgs e)
+    {
+        var core = _core;
+        if (core is null || sender is not Button { Tag: string peerId } button)
+            return;
+
+        button.IsEnabled = false;
+        button.Content = "Inviting…";
+        try
+        {
+            await core.PairAsync(peerId);
+            DiscoveryStatusText.Text = "Pairing invite sent to device. Check device screen to approve.";
+        }
+        catch (Exception ex)
+        {
+            DiscoveryStatusText.Text = $"Failed to send pairing invite: {ex.Message}";
+            button.IsEnabled = true;
+            button.Content = "Pair";
         }
     }
 

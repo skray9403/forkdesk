@@ -51,6 +51,24 @@
             Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
             BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
           <StackPanel Spacing="12">
+            <TextBlock Text="Pair by phone IP address" FontSize="20" FontWeight="SemiBold"/>
+            <TextBlock Text="If your Wi-Fi router blocks discovery broadcasts, enter your phone's Wi-Fi IP address directly (shown on the TwinDesk Android app)."
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
+            <Grid ColumnSpacing="12">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+              </Grid.ColumnDefinitions>
+              <TextBox x:Name="ManualIpBox" PlaceholderText="e.g. 192.168.1.105" VerticalAlignment="Center"/>
+              <Button x:Name="ManualPairButton" Grid.Column="1" Content="Send Pairing Invite" Style="{ThemeResource AccentButtonStyle}" Click="ManualPair_Click" VerticalAlignment="Center"/>
+            </Grid>
+            <TextBlock x:Name="ManualPairStatusText" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+          </StackPanel>
+        </Border>
+        <Border Padding="24" CornerRadius="12"
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+          <StackPanel Spacing="12">
             <TextBlock Text="Trusted devices" FontSize="20" FontWeight="SemiBold"/>
             <TextBlock Text="Previously paired devices. Forgetting one revokes its saved token and ends any active session." Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
             <StackPanel x:Name="PairedDevicesPanel" Spacing="8"/>

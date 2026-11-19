@@ -1,0 +1,63 @@
+<Page x:Class="TwinDesk.Native.Pages.RemotePage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+    <ScrollViewer>
+      <StackPanel Padding="32" Spacing="22" MaxWidth="900" HorizontalAlignment="Left">
+        <StackPanel Spacing="4">
+          <TextBlock Text="Remote input" FontSize="30" FontWeight="SemiBold"/>
+          <TextBlock Text="Control this Windows PC using your Android phone as a touchpad, keyboard or gamepad"
+              Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
+        </StackPanel>
+
+        <InfoBar IsOpen="True" IsClosable="False" Severity="Informational"
+            Title="Direct Win32 input injection"
+            Message="Native SendInput API delivers instant cursor motion and typing without browser lag or Web event overhead."/>
+
+        <!-- Master Switch Card -->
+        <Border Padding="22" CornerRadius="12"
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+          <StackPanel Spacing="14">
+            <TextBlock Text="Remote input control" FontSize="20" FontWeight="SemiBold"/>
+            <ToggleSwitch x:Name="EnabledToggle" Header="Allow remote input from connected phone" IsOn="True" Toggled="OnOptionChanged"/>
+            <TextBlock Text="When enabled, your connected phone's Remote tab can move the mouse, click, scroll and type on this PC."
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
+          </StackPanel>
+        </Border>
+
+        <!-- Sensitivity & Motion Card -->
+        <Border Padding="22" CornerRadius="12"
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+          <StackPanel Spacing="16">
+            <TextBlock Text="Touchpad sensitivity &amp; gestures" FontSize="20" FontWeight="SemiBold"/>
+            
+            <StackPanel Spacing="6">
+              <Grid>
+                <TextBlock Text="Pointer speed" FontSize="14" FontWeight="Medium"/>
+                <TextBlock x:Name="SpeedText" Text="1.0x" HorizontalAlignment="Right" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+              </Grid>
+              <Slider x:Name="SpeedSlider" Minimum="0.5" Maximum="2.5" StepFrequency="0.1" Value="1.0" ValueChanged="SpeedSlider_ValueChanged"/>
+            </StackPanel>
+
+            <CheckBox x:Name="SmoothCheckBox" Content="Smooth cursor movement (eases rapid motions)" IsChecked="True" Click="OnOptionChanged"/>
+            <CheckBox x:Name="TapClickCheckBox" Content="Tap on phone screen to left click" IsChecked="True" Click="OnOptionChanged"/>
+            <CheckBox x:Name="KeyboardCheckBox" Content="Allow remote typing and keyboard shortcuts from phone" IsChecked="True" Click="OnOptionChanged"/>
+          </StackPanel>
+        </Border>
+
+        <!-- Status & Telemetry Card -->
+        <Border Padding="22" CornerRadius="12"
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+          <StackPanel Spacing="8">
+            <TextBlock Text="Input status" FontSize="18" FontWeight="SemiBold"/>
+            <TextBlock x:Name="StatusText" Text="Listening for remote input messages…" TextWrapping="Wrap"/>
+            <TextBlock x:Name="LastEventText" FontSize="12" Foreground="{ThemeResource TextFillColorTertiaryBrush}" TextWrapping="Wrap"/>
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
+</Page>

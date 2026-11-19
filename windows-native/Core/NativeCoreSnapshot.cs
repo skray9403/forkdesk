@@ -16,7 +16,11 @@ public sealed record NativeCoreSnapshot(
     bool FirewallAllowed = false,
     string FirewallStatus = "",
     ClipboardSyncSnapshot? Clipboard = null,
-    FileTransferSnapshot? Files = null)
+    FileTransferSnapshot? Files = null,
+    RemoteInputSnapshot? RemoteInput = null,
+    NotificationSnapshot? Notifications = null,
+    ScreenMirrorSnapshot? ScreenMirror = null,
+    AudioRoutingSnapshot? AudioRouting = null)
 {
     public static NativeCoreSnapshot Unavailable(string status) =>
         new(false, status, Array.Empty<NearbyPeer>());

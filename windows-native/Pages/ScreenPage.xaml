@@ -1,0 +1,98 @@
+<Page x:Class="TwinDesk.Native.Pages.ScreenPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+    <ScrollViewer>
+      <StackPanel Padding="32" Spacing="22" MaxWidth="900" HorizontalAlignment="Left">
+        <StackPanel Spacing="4">
+          <TextBlock Text="Screen" FontSize="30" FontWeight="SemiBold"/>
+          <TextBlock Text="Mirror Android screen to this PC or use external display"
+              Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
+        </StackPanel>
+
+        <InfoBar IsOpen="True" IsClosable="False" Severity="Informational"
+            Title="Hardware-accelerated screen mirror"
+            Message="Native low-latency H.264 video pipeline. Powered by scrcpy and native Windows DirectX surfaces without WebRTC browser overhead."/>
+
+        <!-- Launcher Card -->
+        <Border Padding="22" CornerRadius="12"
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+          <StackPanel Spacing="16">
+            <TextBlock Text="Screen mirror session" FontSize="20" FontWeight="SemiBold"/>
+            <TextBlock x:Name="StatusText" Text="Ready to mirror connected Android screen."
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
+
+            <StackPanel Orientation="Horizontal" Spacing="12">
+              <Button x:Name="StartMirrorButton" Content="Start Screen Mirror" Style="{ThemeResource AccentButtonStyle}" Click="StartMirror_Click"/>
+              <Button x:Name="StopMirrorButton" Content="Stop Mirror" Click="StopMirror_Click" IsEnabled="False"/>
+            </StackPanel>
+            <TextBlock x:Name="EnginePathText" FontSize="12" Foreground="{ThemeResource TextFillColorTertiaryBrush}" TextWrapping="Wrap"/>
+          </StackPanel>
+        </Border>
+
+        <!-- Configuration Card -->
+        <Border Padding="22" CornerRadius="12"
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+          <StackPanel Spacing="14">
+            <TextBlock Text="Display &amp; quality settings" FontSize="20" FontWeight="SemiBold"/>
+            
+            <Grid ColumnSpacing="16" RowSpacing="12">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+              </Grid.ColumnDefinitions>
+              <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+              </Grid.RowDefinitions>
+
+              <StackPanel Grid.Row="0" Grid.Column="0" Spacing="6">
+                <TextBlock Text="Max resolution" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                <ComboBox x:Name="ResolutionCombo" HorizontalAlignment="Stretch" SelectedIndex="0" SelectionChanged="OnOptionChanged">
+                  <ComboBoxItem Content="1080p (1920x1080)"/>
+                  <ComboBoxItem Content="1440p (2560x1440)"/>
+                  <ComboBoxItem Content="720p (1280x720)"/>
+                  <ComboBoxItem Content="Native / Original"/>
+                </ComboBox>
+              </StackPanel>
+
+              <StackPanel Grid.Row="0" Grid.Column="1" Spacing="6">
+                <TextBlock Text="Frame rate" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                <ComboBox x:Name="FpsCombo" HorizontalAlignment="Stretch" SelectedIndex="0" SelectionChanged="OnOptionChanged">
+                  <ComboBoxItem Content="60 FPS (Smooth)"/>
+                  <ComboBoxItem Content="30 FPS (Power saver)"/>
+                </ComboBox>
+              </StackPanel>
+
+              <StackPanel Grid.Row="1" Grid.Column="0" Spacing="6">
+                <TextBlock Text="Video bitrate" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                <ComboBox x:Name="BitrateCombo" HorizontalAlignment="Stretch" SelectedIndex="0" SelectionChanged="OnOptionChanged">
+                  <ComboBoxItem Content="8 Mbps (High quality)"/>
+                  <ComboBoxItem Content="4 Mbps (Balanced)"/>
+                  <ComboBoxItem Content="2 Mbps (Low latency)"/>
+                </ComboBox>
+              </StackPanel>
+            </Grid>
+
+            <CheckBox x:Name="StayAwakeCheckBox" Content="Keep phone awake while mirroring" IsChecked="True" Click="OnOptionChanged"/>
+            <CheckBox x:Name="TurnScreenOffCheckBox" Content="Turn phone display off while mirroring (saves phone battery)" IsChecked="False" Click="OnOptionChanged"/>
+            <CheckBox x:Name="AudioCheckBox" Content="Forward phone audio through mirror" IsChecked="False" Click="OnOptionChanged"/>
+          </StackPanel>
+        </Border>
+
+        <!-- Protocol Details Card -->
+        <Border Padding="22" CornerRadius="12"
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+          <StackPanel Spacing="10">
+            <TextBlock Text="Native capture pipeline" FontSize="18" FontWeight="SemiBold"/>
+            <TextBlock Text="TwinDesk connects directly over the local network TLS port or USB adb channel. Touch and pen gestures inject back into Android through the authenticated control channel."
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
+</Page>

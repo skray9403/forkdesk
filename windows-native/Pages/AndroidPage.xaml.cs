@@ -90,12 +90,28 @@ public sealed partial class AndroidPage : Page
                 item.Children.Add(new TextBlock { Text = peer.Name, FontSize = 15, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
                 item.Children.Add(new TextBlock { Text = $"{peer.Address}:{peer.Port}" });
                 item.Children.Add(new TextBlock { Text = $"Last seen {peer.LastSeen.ToLocalTime():HH:mm:ss} · {(peer.IsPaired ? "Paired" : "Not paired")}", FontSize = 12 });
+
+                var pairButton = new Button
+                {
+                    Content = peer.IsPaired ? "Connect" : "Pair with device",
+                    Tag = peer.Id,
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+                pairButton.Click += PeerPair_Click;
+
+                var row = new Grid { ColumnSpacing = 12 };
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                row.Children.Add(item);
+                Grid.SetColumn(pairButton, 1);
+                row.Children.Add(pairButton);
+
                 AndroidPeersPanel.Children.Add(new Border
                 {
                     Padding = new Thickness(14),
                     CornerRadius = new CornerRadius(10),
                     BorderThickness = new Thickness(1),
-                    Child = item
+                    Child = row
                 });
             }
         }
@@ -244,5 +260,55 @@ public sealed partial class AndroidPage : Page
         DenyPairingButton.IsEnabled = false;
         try { await core.ApprovePairingAsync(false); }
         catch (Exception ex) { PairingStatusText.Text = $"Denial failed: {ex.Message}"; }
+    }
+
+    private async void PeerPair_Click(object sender, RoutedEventArgs e)
+    {
+        var core = _core;
+        if (core is null || sender is not Button { Tag: string peerId } button)
+            return;
+
+        button.IsEnabled = false;
+        button.Content = "Inviting…";
+        try
+        {
+            await core.PairAsync(peerId);
+            DiscoveryStatusText.Text = "Pairing invite sent to phone. Check your phone's screen to confirm.";
+        }
+        catch (Exception ex)
+        {
+            DiscoveryStatusText.Text = $"Failed to send pairing invite: {ex.Message}";
+            button.IsEnabled = true;
+            button.Content = "Pair with device";
+        }
+    }
+
+    private async void ManualPair_Click(object sender, RoutedEventArgs e)
+    {
+        var core = _core;
+        if (core is null) return;
+
+        var ip = ManualIpBox.Text?.Trim();
+        if (string.IsNullOrWhiteSpace(ip))
+        {
+            ManualPairStatusText.Text = "Please enter an IP address.";
+            return;
+        }
+
+        ManualPairButton.IsEnabled = false;
+        ManualPairStatusText.Text = $"Sending invite to {ip}…";
+        try
+        {
+            await core.PairByAddressAsync(ip);
+            ManualPairStatusText.Text = $"Invite sent to {ip}. Check your phone to approve!";
+        }
+        catch (Exception ex)
+        {
+            ManualPairStatusText.Text = $"Invite failed: {ex.Message}";
+        }
+        finally
+        {
+            ManualPairButton.IsEnabled = true;
+        }
     }
 }

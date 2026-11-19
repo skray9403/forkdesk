@@ -10,6 +10,10 @@ public sealed class NativeCoreClient : INativeCoreClient
     private readonly NativeFirewallAccessService _firewall = new();
     private readonly ClipboardSyncService? _clipboard;
     private readonly FileTransferService _files;
+    private readonly NativeRemoteInputService _remoteInput;
+    private readonly NativeNotificationService _notifications;
+    private readonly NativeScreenMirrorService _screenMirror = new();
+    private readonly NativeAudioRoutingService _audio;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private bool _started;
     private bool _disposed;
@@ -44,6 +48,17 @@ public sealed class NativeCoreClient : INativeCoreClient
             _clipboard = new ClipboardSyncService(clipboardAdapter, dataDirectory, identity.Id, SendPeerMessageAsync);
             _clipboard.SnapshotChanged += (_, _) => Publish();
         }
+
+        _remoteInput = new NativeRemoteInputService(SendPeerMessageAsync);
+        _remoteInput.SnapshotChanged += _ => Publish();
+
+        _notifications = new NativeNotificationService(SendPeerMessageAsync);
+        _notifications.SnapshotChanged += _ => Publish();
+
+        _audio = new NativeAudioRoutingService(SendPeerMessageAsync);
+        _audio.SnapshotChanged += _ => Publish();
+
+        _screenMirror.SnapshotChanged += _ => Publish();
     }
 
     public async Task StartAsync(CancellationToken cancellationToken = default)
@@ -100,13 +115,25 @@ public sealed class NativeCoreClient : INativeCoreClient
         return _discovery.RefreshAsync(cancellationToken);
     }
 
-    public Task PairAsync(string peerId, CancellationToken cancellationToken = default)
+    public async Task PairAsync(string peerId, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (string.IsNullOrWhiteSpace(peerId))
-            return Task.FromException(new ArgumentException("A peer ID is required.", nameof(peerId)));
-        return Task.FromException(new NotSupportedException(
-            "The Android app initiates protocol-v1 pairing. Approve its SAS request on this PC when it appears."));
+            throw new ArgumentException("A peer ID is required.", nameof(peerId));
+
+        var snapshot = _discovery.Snapshot();
+        var peer = snapshot.FirstOrDefault(p => string.Equals(p.Id, peerId, StringComparison.OrdinalIgnoreCase));
+        var target = peer?.Address ?? peerId.Trim();
+        await _discovery.SendInviteToAddressAsync(target, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task PairByAddressAsync(string address, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (string.IsNullOrWhiteSpace(address))
+            throw new ArgumentException("An IP address or hostname is required.", nameof(address));
+
+        await _discovery.SendInviteToAddressAsync(address.Trim(), cancellationToken).ConfigureAwait(false);
     }
 
     public Task ApprovePairingAsync(bool allow, CancellationToken cancellationToken = default)
@@ -145,6 +172,64 @@ public sealed class NativeCoreClient : INativeCoreClient
         Publish();
     }
 
+    public Task SetRemoteInputOptionsAsync(RemoteInputOptions options, CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        _remoteInput.SetOptions(options);
+        return Task.CompletedTask;
+    }
+
+    public Task SetNotificationEnabledAsync(bool enabled, CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        return _notifications.SetEnabledAsync(enabled, cancellationToken);
+    }
+
+    public Task DismissNotificationAsync(string id, CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        return _notifications.DismissNotificationAsync(id, cancellationToken);
+    }
+
+    public void ClearNotifications()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        _notifications.ClearAll();
+    }
+
+    public Task SetAudioRoutingOptionsAsync(AudioRoutingOptions options, CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        return _audio.SetOptionsAsync(options, cancellationToken);
+    }
+
+    public void SetScreenMirrorOptions(ScreenMirrorOptions options)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        _screenMirror.SetOptions(options);
+    }
+
+    public bool StartScreenMirroring(string? deviceAddress = null)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        if (string.IsNullOrWhiteSpace(deviceAddress))
+        {
+            var connected = _host.ConnectedDevice;
+            if (connected is not null)
+            {
+                var peer = _discovery.Snapshot().FirstOrDefault(p => p.Id == connected.Id);
+                deviceAddress = peer?.Address;
+            }
+        }
+        return _screenMirror.StartMirroring(deviceAddress);
+    }
+
+    public void StopScreenMirroring()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        _screenMirror.StopMirroring();
+    }
+
     private Task<bool> SendPeerMessageAsync(string message, CancellationToken cancellationToken) =>
         _host.SendToActiveSessionAsync(message, cancellationToken);
 
@@ -153,6 +238,9 @@ public sealed class NativeCoreClient : INativeCoreClient
         if (_clipboard is not null)
             await _clipboard.HandlePeerMessageAsync(type, message).ConfigureAwait(false);
         await _files.HandlePeerMessageAsync(type, message).ConfigureAwait(false);
+        await _remoteInput.HandlePeerMessageAsync(type, message, CancellationToken.None).ConfigureAwait(false);
+        await _notifications.HandlePeerMessageAsync(type, message, CancellationToken.None).ConfigureAwait(false);
+        await _audio.HandlePeerMessageAsync(type, message, CancellationToken.None).ConfigureAwait(false);
     }
 
     private async Task UpdateSessionStatesAsync(bool connected)
@@ -165,6 +253,18 @@ public sealed class NativeCoreClient : INativeCoreClient
 
         try { await _files.SetSessionActiveAsync(connected).ConfigureAwait(false); }
         catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"File transfer session update failed: {ex}"); }
+
+        if (connected)
+        {
+            try { await _remoteInput.HandleSessionStartedAsync().ConfigureAwait(false); }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Remote input session update failed: {ex}"); }
+
+            try { await _notifications.HandleSessionStartedAsync().ConfigureAwait(false); }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Notifications session update failed: {ex}"); }
+
+            try { await _audio.HandleSessionStartedAsync().ConfigureAwait(false); }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Audio session update failed: {ex}"); }
+        }
     }
 
     public async Task<bool> ForgetDeviceAsync(string deviceId, CancellationToken cancellationToken = default)
@@ -212,7 +312,8 @@ public sealed class NativeCoreClient : INativeCoreClient
             _started, _status, nearbyPeers, _host.IsListening, _hostStatus,
             _host.PendingPairing, _host.PairedDevices, _host.ConnectedDevice,
             _firewallStatus.IsAllowed, _firewallStatus.Message, _clipboard?.Snapshot,
-            _files.Snapshot);
+            _files.Snapshot, _remoteInput.Snapshot, _notifications.Snapshot,
+            _screenMirror.Snapshot, _audio.Snapshot);
     }
 
     private void Publish(string? status = null)
@@ -233,6 +334,7 @@ public sealed class NativeCoreClient : INativeCoreClient
             _status = "Stopped";
             _clipboard?.Dispose();
             _files.Dispose();
+            _screenMirror.Dispose();
             await _host.DisposeAsync().ConfigureAwait(false);
             await _discovery.DisposeAsync().ConfigureAwait(false);
             Publish();

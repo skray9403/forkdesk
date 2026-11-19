@@ -1,0 +1,61 @@
+<Page x:Class="TwinDesk.Native.Pages.AudioPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+    <ScrollViewer>
+      <StackPanel Padding="32" Spacing="22" MaxWidth="900" HorizontalAlignment="Left">
+        <StackPanel Spacing="4">
+          <TextBlock Text="Audio" FontSize="30" FontWeight="SemiBold"/>
+          <TextBlock Text="Route phone sound to PC speakers or stream microphone between devices"
+              Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
+        </StackPanel>
+
+        <InfoBar IsOpen="True" IsClosable="False" Severity="Informational"
+            Title="Direct Windows Audio Engine"
+            Message="Uses Windows CoreAudio and WASAPI for direct hardware playback. No browser WebAudio delays."/>
+
+        <!-- Playback Card -->
+        <Border Padding="22" CornerRadius="12"
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+          <StackPanel Spacing="16">
+            <TextBlock Text="Phone audio playback" FontSize="20" FontWeight="SemiBold"/>
+            <ToggleSwitch x:Name="PlayPhoneAudioToggle" Header="Play Android phone sound on this PC" IsOn="False" Toggled="OnOptionChanged"/>
+            <TextBlock Text="When enabled, games, music and video audio from your phone play through this PC's speakers."
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
+
+            <StackPanel Spacing="6">
+              <Grid>
+                <TextBlock Text="Playback volume" FontSize="14" FontWeight="Medium"/>
+                <TextBlock x:Name="VolumeText" Text="100%" HorizontalAlignment="Right" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+              </Grid>
+              <Slider x:Name="VolumeSlider" Minimum="0" Maximum="100" StepFrequency="5" Value="100" ValueChanged="VolumeSlider_ValueChanged"/>
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <!-- Bluetooth Audio Card -->
+        <Border Padding="22" CornerRadius="12"
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+          <StackPanel Spacing="14">
+            <TextBlock Text="Bluetooth A2DP Audio Sink" FontSize="20" FontWeight="SemiBold"/>
+            <TextBlock Text="Standard Windows Bluetooth audio sink mode allows your phone to stream media over Bluetooth when not on the same Wi-Fi network."
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
+            <CheckBox x:Name="BtAudioCheckBox" Content="Enable Bluetooth audio receiver" IsChecked="True"/>
+          </StackPanel>
+        </Border>
+
+        <!-- Status Card -->
+        <Border Padding="22" CornerRadius="12"
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+          <StackPanel Spacing="8">
+            <TextBlock Text="Audio routing status" FontSize="18" FontWeight="SemiBold"/>
+            <TextBlock x:Name="StatusText" Text="Audio receiver ready." TextWrapping="Wrap"/>
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
+</Page>

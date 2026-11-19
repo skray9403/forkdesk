@@ -90,6 +90,8 @@ Section "TwinDesk Core" SecCore
   nsExec::Exec 'netsh advfirewall firewall add rule name="${APP_NAME}" dir=in action=allow program="$INSTDIR\${APP_EXE}" profile=any enable=yes'
   nsExec::Exec 'netsh advfirewall firewall delete rule name="${APP_NAME} (TCP 47800)"'
   nsExec::Exec 'netsh advfirewall firewall add rule name="${APP_NAME} (TCP 47800)" dir=in action=allow protocol=TCP localport=47800 program="$INSTDIR\${APP_EXE}" profile=any enable=yes'
+  nsExec::Exec 'netsh advfirewall firewall delete rule name="${APP_NAME} (UDP 47801)"'
+  nsExec::Exec 'netsh advfirewall firewall add rule name="${APP_NAME} (UDP 47801)" dir=in action=allow protocol=UDP localport=47801 program="$INSTDIR\${APP_EXE}" profile=any enable=yes'
 
   ; Create Shortcuts
   SetShellVarContext all
@@ -129,6 +131,7 @@ Section "Uninstall"
   ; Remove firewall rules
   nsExec::Exec 'netsh advfirewall firewall delete rule name="${APP_NAME}" program="$INSTDIR\${APP_EXE}"'
   nsExec::Exec 'netsh advfirewall firewall delete rule name="${APP_NAME} (TCP 47800)"'
+  nsExec::Exec 'netsh advfirewall firewall delete rule name="${APP_NAME} (UDP 47801)"'
 
   ; Remove shortcuts
   SetShellVarContext all

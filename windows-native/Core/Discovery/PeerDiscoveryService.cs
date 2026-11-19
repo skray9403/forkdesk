@@ -122,6 +122,67 @@ public sealed class PeerDiscoveryService : IAsyncDisposable
                 .ConfigureAwait(false);
     }
 
+    public async Task SendInviteAsync(IPAddress address, CancellationToken cancellationToken = default)
+    {
+        var socket = _socket;
+        if (socket is null) return;
+        var invite = new PeerBeacon
+        {
+            Type = ProtocolV1.Message.Invite,
+            Version = ProtocolV1.Version,
+            Id = _options.DeviceId,
+            Name = _options.DeviceName,
+            Os = ProtocolV1.PeerOs.Windows,
+            Role = "host",
+            Port = _options.Port,
+            Fingerprint = _options.Fingerprint
+        };
+        var bytes = JsonSerializer.SerializeToUtf8Bytes(invite);
+
+        // Unicast to target peer
+        try
+        {
+            await socket.SendAsync(bytes, new IPEndPoint(address, ProtocolV1.DiscoveryPort), cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (SocketException) { }
+
+        // Also broadcast to ensure delivery
+        foreach (var target in BroadcastTargets())
+        {
+            if (!target.Equals(address))
+            {
+                try
+                {
+                    await socket.SendAsync(bytes, new IPEndPoint(target, ProtocolV1.DiscoveryPort), cancellationToken)
+                        .ConfigureAwait(false);
+                }
+                catch (SocketException) { }
+            }
+        }
+    }
+
+    public async Task SendInviteToAddressAsync(string addressOrHost, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(addressOrHost)) return;
+
+        if (IPAddress.TryParse(addressOrHost.Trim(), out var ip))
+        {
+            await SendInviteAsync(ip, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        try
+        {
+            var hostAddresses = await Dns.GetHostAddressesAsync(addressOrHost.Trim(), cancellationToken).ConfigureAwait(false);
+            foreach (var addr in hostAddresses.Where(a => a.AddressFamily == AddressFamily.InterNetwork))
+            {
+                await SendInviteAsync(addr, cancellationToken).ConfigureAwait(false);
+            }
+        }
+        catch (SocketException) { }
+    }
+
     private async Task SendProbeAsync(CancellationToken cancellationToken)
     {
         var socket = _socket;

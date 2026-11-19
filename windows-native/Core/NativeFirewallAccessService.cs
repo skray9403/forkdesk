@@ -126,18 +126,25 @@ public sealed class NativeFirewallAccessService
                     Convert.ToInt32(rule.Protocol, CultureInfo.InvariantCulture) != protocol)
                     continue;
 
+                var ruleProtocol = Convert.ToInt32(rule.Protocol, CultureInfo.InvariantCulture);
+                // 256 is NET_FW_IP_PROTOCOL_ANY, 0 is any, or matches specific protocol
+                if (ruleProtocol != 256 && ruleProtocol != 0 && ruleProtocol != protocol)
+                    continue;
+
                 var program = Convert.ToString(rule.ApplicationName, CultureInfo.InvariantCulture);
                 if (string.IsNullOrWhiteSpace(program) ||
                     !string.Equals(Path.GetFullPath(program), executablePath, StringComparison.OrdinalIgnoreCase))
                     continue;
 
                 var profiles = Convert.ToInt32(rule.Profiles, CultureInfo.InvariantCulture);
-                if ((profiles & activeProfiles) != activeProfiles)
+                // 2147483647 (int.MaxValue) is NET_FW_PROFILE2_ALL; otherwise must match at least one active profile bit
+                if (profiles != int.MaxValue && (profiles & activeProfiles) == 0)
                     continue;
 
                 string localPorts = Convert.ToString((object?)rule.LocalPorts, CultureInfo.InvariantCulture) ?? string.Empty;
-                if (localPorts.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
-                    .Any(value => value == port.ToString(CultureInfo.InvariantCulture)))
+                if (string.IsNullOrWhiteSpace(localPorts) || localPorts == "*" ||
+                    localPorts.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                        .Any(value => value == port.ToString(CultureInfo.InvariantCulture)))
                     return true;
             }
         }
