@@ -434,7 +434,32 @@ To achieve feature parity with the original TwinDesk Android-to-host controls wi
 
 ---
 
-## 10. Feature Parity Matrix (Native Windows vs Original TwinDesk)
+## 10. Phase 6: Faithful UI/UX Layout Porting from Original Windows App (Zero Overhead)
+
+### A. Architectural Overview
+To achieve complete visual and functional parity with the original Windows desktop layout (`windows/app.html`, `windows/app.css`, `windows/app-pages.css`, `windows/ui-overview.js`) without introducing any browser or WebView2 controls, the presentation layer was rebuilt in pure native WinUI 3 XAML:
+
+1. **Sidebar Identity & Header (`MainWindow.xaml`):**
+   - Replicated `.identity` with application icon emblem, bold `TwinDesk` title, and live peer status indicator dot (`SidebarStatusDot`: green for connected, blue for active discovery, grey for idle).
+   - Dynamic **Connected Phone Sidebar Tile** (`SidebarPhoneTile`): Replicated `#phones` from the original sidebar, displaying phone outline icon, connected device name, live battery percentage, charging indicator, and link medium (USB 4ms vs Wi-Fi).
+2. **Top Sticky Pairing Request Banner (`PairingBanner`):**
+   - Emulated `.banner`: Appears immediately at the top of the window when a device requests pairing. Displays the 6-digit numeric SAS verification code with space separation (`000 000`) and "Codes match" (Approve) / "Cancel" (Reject) buttons.
+3. **The 3-Column Hero Connection Bridge (`OverviewPage.xaml`):**
+   - **Left:** This PC monitor silhouette, host computer name, and local IP address pill.
+   - **Center:** Connection bridge line with pulse indicator, live status pill (`● Connected · USB · 4 ms` / `○ Ready to connect`), and link description.
+   - **Right:** Target phone silhouette, phone name, and battery badge with charging bolt.
+   - **Hero Actions Toolbar:** Direct access to "Start Screen Mirror", "Ring phone", "Lock phone", "Scan USB", and "Disconnect".
+4. **Direct Address, USB Cable & Discovery Cards:**
+   - "Connect by address" input row with "Copy IP" action button.
+   - "USB Cable Link (ADB)" status card with manual scan button.
+   - "Found nearby" list card with device platform glyphs, IP:Port endpoints, and "Pair" / "Connect" buttons.
+   - "Windows Defender Firewall" status card with elevation fix trigger.
+5. **Zero Web Overhead:**
+   - 100% native WinUI 3 XAML rendered via Windows App SDK and DirectX hardware composition. Zero Chromium, zero WebView2, zero Node.js daemon.
+
+---
+
+## 11. Feature Parity Matrix (Native Windows vs Original TwinDesk)
 
 | Feature Category | Original TwinDesk (Electron) | ForkDesk Windows Native (WinUI 3) | Parity Status | Architectural Advantage / Note |
 | :--- | :--- | :--- | :--- | :--- |

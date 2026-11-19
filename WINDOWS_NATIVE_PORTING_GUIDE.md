@@ -119,7 +119,24 @@ The original TwinDesk implementation relied on Electron 33, Node.js, and a patch
     - PC can trigger `dev.do: lock` to lock the phone screen.
     - Phone can trigger `dev.do: lock` to lock the Windows PC via Win32 `LockWorkStation()`.
 
-### Phase 6: Packaging & GitHub Actions CI/CD
+### Phase 6: Faithful UI/UX Layout Porting (Zero Web Overhead)
+* **Action:** Re-engineered the native WinUI 3 presentation layer to match the visual and structural design of the original Windows application (`windows/app.html`, `windows/app.css`, `windows/app-pages.css`, `windows/ui-overview.js`):
+  1. **Sidebar Identity & Status Header (`MainWindow.xaml`):**
+     - Emulated original `.identity`: App mark emblem, bold title ("TwinDesk"), live status indicator dot (`SidebarStatusDot`), and connection summary text.
+     - Added dynamic **Connected Phone Tile** (`SidebarPhoneTile`, matching `#phones` in original sidebar) with phone icon, device name, battery percentage, charging lightning bolt, and cable/Wi-Fi link type.
+  2. **Top Sticky Pairing Banner (`PairingBanner`):**
+     - Matching `.banner`: When a device requests pairing, displays a prominent top card with large, spaced 6-digit numeric SAS code (`123 456`) and "Codes match" / "Cancel" buttons.
+  3. **Iconic 3-Column Hero Connection Bridge (`OverviewPage.xaml`):**
+     - Left: PC Monitor silhouette, host computer name (`HostDeviceNameText`), and IP address pill.
+     - Center: Glowing bridge line (`HeroLinkBeam`), live pulse dot, and rounded status pill (`● Connected · USB · 4 ms` or `○ Ready to connect`).
+     - Right: Phone silhouette, target phone name (`PhoneNameText`), and battery badge with charging state.
+     - Hero toolbar: `Start Screen Mirror` (accent), `Ring phone`, `Lock phone`, `Scan USB`, and `Disconnect`.
+  4. **Direct Address, USB Cable & Discovery Cards:**
+     - Replicated "Connect by address" input row with "Copy IP" button.
+     - Replicated USB Cable (ADB reverse) card and Found Nearby list with OS glyphs and paired badges.
+  5. **Zero Web Overhead:** Built 100% in pure WinUI 3 XAML / C# using DirectX hardware acceleration; zero Chromium, zero WebViews, zero HTML/CSS runtimes.
+
+### Phase 7: Packaging & GitHub Actions CI/CD
 * **Action:** Created automated continuous integration workflow [`.github/workflows/windows-native-build.yml`](file:///.github/workflows/windows-native-build.yml):
   - Automatically compiles, tests, and publishes self-contained `win-x64` and `win-arm64` executables on every push.
   - Builds the NSIS installer (`TwinDesk-Setup.exe`) bundle.
