@@ -15,6 +15,7 @@ public sealed class NativeCoreClient : INativeCoreClient
     private readonly NativeScreenMirrorService _screenMirror = new();
     private readonly NativeAudioRoutingService _audio;
     private readonly NativeAdbWiredService _wired;
+    private PhoneTelemetry _phoneTelemetry = new();
     private readonly SemaphoreSlim _gate = new(1, 1);
     private bool _started;
     private bool _disposed;
@@ -241,11 +242,70 @@ public sealed class NativeCoreClient : INativeCoreClient
         return _wired.TriggerScanAsync(cancellationToken);
     }
 
+    public async Task RingPhoneAsync(bool ring, CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        _phoneTelemetry = _phoneTelemetry with { IsRinging = ring };
+        Publish();
+        var msg = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            t = "dev.do",
+            @do = ring ? "ring" : "ringStop"
+        });
+        await SendPeerMessageAsync(msg, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task LockPhoneAsync(CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        var msg = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            t = "dev.do",
+            @do = "lock"
+        });
+        await SendPeerMessageAsync(msg, cancellationToken).ConfigureAwait(false);
+    }
+
+    [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
+    private static extern bool LockWorkStation();
+
     private Task<bool> SendPeerMessageAsync(string message, CancellationToken cancellationToken) =>
         _host.SendToActiveSessionAsync(message, cancellationToken);
 
     private async Task HandlePeerMessageAsync(PairedDevice device, string type, System.Text.Json.JsonElement message)
     {
+        if (type is "phone.info" or "dev.state")
+        {
+            int? battery = null;
+            var charging = false;
+            string? model = null;
+
+            if (message.TryGetProperty("battery", out var batEl) && batEl.TryGetInt32(out var bVal))
+                battery = bVal;
+            if (message.TryGetProperty("charging", out var chgEl))
+                charging = chgEl.ValueKind == System.Text.Json.JsonValueKind.True;
+            if (message.TryGetProperty("model", out var modEl))
+                model = modEl.GetString();
+
+            _phoneTelemetry = new PhoneTelemetry(
+                battery ?? _phoneTelemetry.Battery,
+                charging,
+                model ?? _phoneTelemetry.Model,
+                _phoneTelemetry.IsRinging);
+            Publish();
+        }
+        else if (type == "dev.do")
+        {
+            if (message.TryGetProperty("do", out var doEl))
+            {
+                var action = doEl.GetString();
+                if (action == "lock")
+                {
+                    try { LockWorkStation(); } catch { }
+                }
+            }
+        }
+
         if (_clipboard is not null)
             await _clipboard.HandlePeerMessageAsync(type, message).ConfigureAwait(false);
         await _files.HandlePeerMessageAsync(type, message).ConfigureAwait(false);
@@ -267,6 +327,18 @@ public sealed class NativeCoreClient : INativeCoreClient
 
         if (connected)
         {
+            try
+            {
+                var devState = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    t = "dev.state",
+                    app = new { v = "3.3.0" },
+                    can = new { ring = false, @lock = true, sleep = true, volume = true }
+                });
+                await _host.SendToActiveSessionAsync(devState, CancellationToken.None).ConfigureAwait(false);
+            }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"dev.state send failed: {ex}"); }
+
             try { await _remoteInput.HandleSessionStartedAsync().ConfigureAwait(false); }
             catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Remote input session update failed: {ex}"); }
 
@@ -324,7 +396,8 @@ public sealed class NativeCoreClient : INativeCoreClient
             _host.PendingPairing, _host.PairedDevices, _host.ConnectedDevice,
             _firewallStatus.IsAllowed, _firewallStatus.Message, _clipboard?.Snapshot,
             _files.Snapshot, _remoteInput.Snapshot, _notifications.Snapshot,
-            _screenMirror.Snapshot, _audio.Snapshot, _wired.Snapshot);
+            _screenMirror.Snapshot, _audio.Snapshot, _wired.Snapshot,
+            _phoneTelemetry);
     }
 
     private void Publish(string? status = null)

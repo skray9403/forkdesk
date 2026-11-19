@@ -24,4 +24,6 @@ public interface INativeCoreClient : IAsyncDisposable
     bool StartScreenMirroring(string? deviceAddress = null);
     void StopScreenMirroring();
     Task TriggerWiredScanAsync(CancellationToken cancellationToken = default);
+    Task RingPhoneAsync(bool ring, CancellationToken cancellationToken = default);
+    Task LockPhoneAsync(CancellationToken cancellationToken = default);
 }

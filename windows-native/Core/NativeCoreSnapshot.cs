@@ -4,6 +4,12 @@ public sealed record NearbyPeer(
     string Id, string Name, PeerPlatform Platform, string Address, int Port,
     string Fingerprint, bool IsPaired, bool IsConnected, DateTimeOffset LastSeen);
 
+public sealed record PhoneTelemetry(
+    int? Battery = null,
+    bool Charging = false,
+    string? Model = null,
+    bool IsRinging = false);
+
 public sealed record NativeCoreSnapshot(
     bool IsAvailable,
     string Status,
@@ -21,7 +27,8 @@ public sealed record NativeCoreSnapshot(
     NotificationSnapshot? Notifications = null,
     ScreenMirrorSnapshot? ScreenMirror = null,
     AudioRoutingSnapshot? AudioRouting = null,
-    AdbWiredSnapshot? AdbWired = null)
+    AdbWiredSnapshot? AdbWired = null,
+    PhoneTelemetry? Phone = null)
 {
     public static NativeCoreSnapshot Unavailable(string status) =>
         new(false, status, Array.Empty<NearbyPeer>());

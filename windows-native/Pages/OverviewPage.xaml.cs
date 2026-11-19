@@ -69,6 +69,29 @@ public sealed partial class OverviewPage : Page
                 : $"{androidCount} Android device(s) discovered";
         PeerCountText.Text = $"{snapshot.NearbyPeers.Count} compatible peer(s) nearby";
 
+        if (snapshot.Phone is not null)
+        {
+            var bat = snapshot.Phone.Battery;
+            var chg = snapshot.Phone.Charging;
+            PhoneBatteryText.Text = bat.HasValue
+                ? $"Battery: {bat.Value}% {(chg ? "⚡ Charging" : "")}"
+                : snapshot.ConnectedDevice is not null ? "Device active" : "Battery status pending";
+
+            RingPhoneButton.Content = snapshot.Phone.IsRinging ? "Stop ringing" : "Ring phone";
+            RingPhoneButton.IsEnabled = snapshot.ConnectedDevice is not null;
+            LockPhoneButton.IsEnabled = snapshot.ConnectedDevice is not null;
+        }
+        else
+        {
+            RingPhoneButton.IsEnabled = snapshot.ConnectedDevice is not null;
+            LockPhoneButton.IsEnabled = snapshot.ConnectedDevice is not null;
+        }
+
+        if (snapshot.AdbWired is not null)
+        {
+            UsbSummaryText.Text = snapshot.AdbWired.Status;
+        }
+
         NearbyPeersPanel.Children.Clear();
         if (snapshot.NearbyPeers.Count == 0)
         {
@@ -175,5 +198,26 @@ public sealed partial class OverviewPage : Page
         }
 
         Frame?.Navigate(typeof(AndroidPage), _core);
+    }
+
+    private async void RingPhone_Click(object sender, RoutedEventArgs e)
+    {
+        var core = _core;
+        if (core is null) return;
+        var snapshot = await core.GetSnapshotAsync();
+        var ringing = snapshot.Phone?.IsRinging == true;
+        await core.RingPhoneAsync(!ringing);
+    }
+
+    private async void LockPhone_Click(object sender, RoutedEventArgs e)
+    {
+        var core = _core;
+        if (core is null) return;
+        await core.LockPhoneAsync();
+    }
+
+    private void StartMirror_Click(object sender, RoutedEventArgs e)
+    {
+        _core?.StartScreenMirroring();
     }
 }
