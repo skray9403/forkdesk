@@ -6,7 +6,7 @@ plugins {
 android {
     namespace = "com.twindesk.android"
     compileSdk = 37
-    compileSdkMinor = 1
+    compileSdkMinor = 2
     defaultConfig {
         applicationId = "com.twindesk.android"
         minSdk = 29 // Android 10: wireless debugging needs 11, everything else works from 10
@@ -72,7 +72,7 @@ android {
 }
 
 dependencies {
-    implementation(platform("androidx.compose:compose-bom:2026.11.01"))
+    implementation(platform("androidx.compose:compose-bom-alpha:2026.11.00"))
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.ui:ui")
     implementation("androidx.activity:activity-compose:1.13.0")
