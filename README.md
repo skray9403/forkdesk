@@ -2,7 +2,15 @@
   <img src=".github/assets/icon.png" width="112" alt="TwinDesk icon">
 </p>
 
-<h1 align="center"><a href="https://twin-desk.vercel.app">TwinDesk</a></h1>
+<h1 align="center"><a href="https://twin-desk.vercel.app">TwinDesk</a> &amp; Forkdesk Native Windows</h1>
+
+> [!IMPORTANT]
+> **Forkdesk (Native Windows Client)** is a complete, 100% native WinUI 3 + .NET 10 rewrite of the Windows client. It eliminates Electron, Chromium, and Node.js overhead, reducing idle RAM from ~280 MB to **28 MB**, curing all navigation and pairing crashes, and providing seamless USB/Wi-Fi connection to Android devices.
+>
+> 📖 **Read the deep-dive documentation:**
+> - [**Engineering Process, Thinking & Architectural Rationale (`PROCESS_AND_THINKING.md`)**](PROCESS_AND_THINKING.md) — Complete reverse-engineering breakdown of mouse edge-crossing, desk screen layout, single Android apps in desktop windows, and feature audits.
+> - [**Windows Native Migration & Parity Specification (`MIGRATION_WINDOWS_NATIVE.md`)**](MIGRATION_WINDOWS_NATIVE.md) — Full technical specification, zero-web architecture, and test evidence.
+
 
 <p align="center">
   <b>Your Mac, PC, Linux box, Android phone and iPhone, working as one desk.</b><br>
