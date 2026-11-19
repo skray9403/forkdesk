@@ -23,4 +23,14 @@
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.6.5" />
     <Content Include="Firewall\AllowFirewall.ps1" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+  <!-- Strip unused transitive WebView2 assemblies and map assets for a zero-overhead pure native build -->
+  <Target Name="PurgeUnusedWebAssets" AfterTargets="ComputeFilesToPublish">
+    <ItemGroup>
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)"
+          Condition="'%(FileName)' == 'Microsoft.Web.WebView2.Core'
+                  or '%(FileName)' == 'Microsoft.Web.WebView2.Core.Projection'
+                  or '%(FileName)' == 'WebView2Loader'
+                  or '%(Extension)' == '.html'" />
+    </ItemGroup>
+  </Target>
 </Project>

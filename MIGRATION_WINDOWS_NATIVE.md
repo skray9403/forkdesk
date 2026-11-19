@@ -61,10 +61,14 @@ To eliminate the browser runtime footprint while maintaining complete compatibil
 
 ## 3. Whole Thinking Process & Architectural Rationale
 
-### A. Strict Zero-Browser Rendering Boundary
-* **Decision:** Reject any use of WebView2 controls, HTML layouts, or embedded web frames in the Windows native app.
-* **Why:** In previous iterations, developers often used WebView2 as an easy shortcut to embed web views from the Electron app. However, WebView2 still spins up Edge browser processes, consuming 80–120 MB RAM and defeating the primary purpose of migrating to a native binary.
-* **Execution:** All surfaces in `windows-native/` are 100% native WinUI 3 XAML controls (`StackPanel`, `Grid`, `Border`, `ProgressBar`, `Button`, `InfoBar`, `NavigationView`). The project configuration explicitly disables embedded web renderers, and CI checks that no `msedgewebview2.exe` is packaged in self-contained builds.
+### A. Strict Zero-Browser Rendering Boundary & Web Asset Purge
+* **Decision:** Reject any use of WebView2 controls, HTML layouts, or embedded web frames in the Windows native app, and actively purge transitive web binaries from output bundles.
+* **Why:** In previous iterations, developers often used WebView2 as an easy shortcut to embed web views from the Electron app. However, WebView2 still spins up Edge browser processes, consuming 80–120 MB RAM and defeating the primary purpose of migrating to a native binary. Furthermore, even when WebView2 is unused, the `Microsoft.WindowsAppSDK` NuGet package transitively bundles `Microsoft.Web.WebView2.Core.dll`, `Microsoft.Web.WebView2.Core.Projection.dll`, `WebView2Loader.dll`, and `map.html` (~1.6 MB of dead weight).
+* **Execution:**
+  1. All surfaces in `windows-native/` are 100% native WinUI 3 XAML controls (`StackPanel`, `Grid`, `Border`, `ProgressBar`, `Button`, `InfoBar`, `NavigationView`).
+  2. Engineered an automated MSBuild publish target (`PurgeUnusedWebAssets`) in `TwinDesk.Native.csproj` that purges `Microsoft.Web.WebView2.*`, `WebView2Loader.dll`, and `*.html` from the final published bundle.
+  3. Validated via smoke testing that `TwinDesk.exe` launches and initializes its core services with 0 WebView2 DLLs and 0 web runtime processes.
+  4. CI (`build-native-windows.yml`) strictly enforces zero WebView2 runtimes, zero loader DLLs, and zero HTML assets in published ZIP artifacts for both x64 and ARM64.
 
 ### B. Decoupled Core Library (`TwinDesk.Native.Core`)
 * **Decision:** Keep all protocol, discovery, cryptography, and service logic in a standalone .NET class library (`TwinDesk.Native.Core.csproj`) with zero dependencies on WinUI or Windows App SDK.
@@ -138,6 +142,23 @@ To eliminate the browser runtime footprint while maintaining complete compatibil
   3. Tampered / corrupt checksum rejection.
   4. Out-of-order chunk sequence handling and automatic cancellation.
   5. Active transfer cancellation and peer notification.
+
+### 6. Zero-Overhead Web Asset Purge (`TwinDesk.Native.csproj` & CI Workflow)
+* **MSBuild Target (`PurgeUnusedWebAssets`):**
+  Added an automated post-publish filtering target to `TwinDesk.Native.csproj`:
+  ```xml
+  <Target Name="PurgeUnusedWebAssets" AfterTargets="ComputeFilesToPublish">
+    <ItemGroup>
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)"
+          Condition="'%(FileName)' == 'Microsoft.Web.WebView2.Core'
+                  or '%(FileName)' == 'Microsoft.Web.WebView2.Core.Projection'
+                  or '%(FileName)' == 'WebView2Loader'
+                  or '%(Extension)' == '.html'" />
+    </ItemGroup>
+  </Target>
+  ```
+* **CI Assertion Hardening (`build-native-windows.yml`):**
+  Added explicit verification steps in GitHub Actions CI to guarantee that no `WebView2Loader.dll` or `*.html` files exist in published artifacts for either x64 or ARM64.
 
 ---
 

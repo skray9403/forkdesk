@@ -59,6 +59,8 @@ jobs:
           if (-not (Test-Path artifacts/win-x64/TwinDesk.exe)) { throw 'TwinDesk.exe missing from x64 publish output.' }
           if (-not (Test-Path artifacts/win-x64/coreclr.dll)) { throw '.NET runtime missing from x64 self-contained output.' }
           if (Test-Path artifacts/win-x64/msedgewebview2.exe) { throw 'Unexpected embedded Edge WebView2 runtime in x64 publish output.' }
+          if (Test-Path artifacts/win-x64/WebView2Loader.dll) { throw 'Unexpected WebView2Loader.dll in x64 publish output.' }
+          if (Get-ChildItem -Path artifacts/win-x64 -Filter "*.html" -Recurse) { throw 'Unexpected HTML asset in x64 publish output.' }
       - name: Smoke test x64 startup and single-instance activation
         shell: pwsh
         timeout-minutes: 2
@@ -120,6 +122,8 @@ jobs:
           if (-not (Test-Path artifacts/win-arm64/TwinDesk.exe)) { throw 'TwinDesk.exe missing from ARM64 publish output.' }
           if (-not (Test-Path artifacts/win-arm64/coreclr.dll)) { throw '.NET runtime missing from ARM64 self-contained output.' }
           if (Test-Path artifacts/win-arm64/msedgewebview2.exe) { throw 'Unexpected embedded Edge WebView2 runtime in ARM64 publish output.' }
+          if (Test-Path artifacts/win-arm64/WebView2Loader.dll) { throw 'Unexpected WebView2Loader.dll in ARM64 publish output.' }
+          if (Get-ChildItem -Path artifacts/win-arm64 -Filter "*.html" -Recurse) { throw 'Unexpected HTML asset in ARM64 publish output.' }
       - name: Package ARM64
         shell: pwsh
         run: Compress-Archive -Path artifacts/win-arm64/* -DestinationPath artifacts/TwinDesk-windows-arm64.zip -Force
