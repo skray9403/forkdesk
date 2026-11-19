@@ -101,4 +101,26 @@ public sealed class FeatureServicesTests
         Assert.True(service.Snapshot.PlayPhoneSound);
         Assert.Equal(80, service.Snapshot.VolumePercent);
     }
+
+    [Fact]
+    public void EdgeCrossingServiceInitializesAndUpdatesOptions()
+    {
+        var sent = new List<string>();
+        using var service = new NativeEdgeCrossingService((msg, _) =>
+        {
+            sent.Add(msg);
+            return Task.FromResult(true);
+        });
+
+        var snap = service.Snapshot;
+        Assert.False(snap.IsCrossing);
+        Assert.Equal("right", snap.ActiveSide);
+        Assert.Equal(50.0, snap.ResistancePx);
+
+        service.SetOptions(new EdgeCrossingOptions(Side: "left", ResistancePx: 80.0, BleInput: true));
+        var updated = service.Snapshot;
+        Assert.Equal("left", updated.ActiveSide);
+        Assert.Equal(80.0, updated.ResistancePx);
+        Assert.True(updated.BleInput);
+    }
 }

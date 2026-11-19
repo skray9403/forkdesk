@@ -15,6 +15,7 @@ public sealed class NativeCoreClient : INativeCoreClient
     private readonly NativeScreenMirrorService _screenMirror = new();
     private readonly NativeAudioRoutingService _audio;
     private readonly NativeAdbWiredService _wired;
+    private readonly NativeEdgeCrossingService _edgeCrossing;
     private PhoneTelemetry _phoneTelemetry = new();
     private readonly SemaphoreSlim _gate = new(1, 1);
     private bool _started;
@@ -64,6 +65,9 @@ public sealed class NativeCoreClient : INativeCoreClient
 
         _wired = new NativeAdbWiredService(identity.Id, identity.Name, discoveryOptions.Port, () => _host.ConnectedDevice is not null);
         _wired.SnapshotChanged += _ => Publish();
+
+        _edgeCrossing = new NativeEdgeCrossingService(SendPeerMessageAsync, _wired);
+        _edgeCrossing.SnapshotChanged += _ => Publish();
     }
 
     public async Task StartAsync(CancellationToken cancellationToken = default)
@@ -266,6 +270,143 @@ public sealed class NativeCoreClient : INativeCoreClient
         await SendPeerMessageAsync(msg, cancellationToken).ConfigureAwait(false);
     }
 
+    public Task SetEdgeCrossingOptionsAsync(EdgeCrossingOptions options, CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        _edgeCrossing.SetOptions(options);
+        return Task.CompletedTask;
+    }
+
+    public async Task<IReadOnlyList<AndroidAppInfo>> GetInstalledAndroidAppsAsync(CancellationToken cancellationToken = default)
+    {
+        var knownApps = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["com.whatsapp"] = "WhatsApp",
+            ["org.telegram.messenger"] = "Telegram",
+            ["com.instagram.android"] = "Instagram",
+            ["com.openai.chatgpt"] = "ChatGPT",
+            ["com.anthropic.claude"] = "Claude",
+            ["com.android.chrome"] = "Google Chrome",
+            ["org.videolan.vlc"] = "VLC Media Player",
+            ["com.google.android.youtube"] = "YouTube",
+            ["com.google.android.keep"] = "Google Keep",
+            ["com.google.android.apps.photos"] = "Google Photos",
+            ["io.ente.photos"] = "Ente Photos",
+            ["me.proton.android.drive"] = "Proton Drive",
+            ["com.netflix.mediaclient"] = "Netflix",
+            ["com.spotify.music"] = "Spotify",
+            ["com.android.settings"] = "Settings",
+            ["com.google.android.deskclock"] = "Clock",
+            ["com.google.android.calculator"] = "Calculator"
+        };
+
+        var adb = NativeAdbWiredService.FindAdbPath();
+        if (adb is null)
+        {
+            return knownApps.Select(kv => new AndroidAppInfo(kv.Key, kv.Value)).ToList();
+        }
+
+        var serial = _wired.Snapshot.ConnectedSerials.FirstOrDefault();
+        var sArg = !string.IsNullOrEmpty(serial) ? $"-s {serial} " : "";
+
+        try
+        {
+            using var proc = new System.Diagnostics.Process
+            {
+                StartInfo = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = adb,
+                    Arguments = $"{sArg}shell pm list packages -3",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    CreateNoWindow = true
+                }
+            };
+            proc.Start();
+            var outTask = proc.StandardOutput.ReadToEndAsync(cancellationToken);
+            await proc.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+            var output = await outTask.ConfigureAwait(false);
+
+            var list = new List<AndroidAppInfo>();
+            var lines = output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (var line in lines)
+            {
+                var pkg = line.Trim();
+                if (pkg.StartsWith("package:")) pkg = pkg.Substring("package:".Length).Trim();
+                if (string.IsNullOrEmpty(pkg)) continue;
+
+                if (knownApps.TryGetValue(pkg, out var displayName))
+                {
+                    list.Add(new AndroidAppInfo(pkg, displayName));
+                }
+                else
+                {
+                    var parts = pkg.Split('.');
+                    var name = parts.Length > 0 ? parts[^1] : pkg;
+                    if (name.Length > 1) name = char.ToUpperInvariant(name[0]) + name.Substring(1);
+                    list.Add(new AndroidAppInfo(pkg, name));
+                }
+            }
+
+            if (list.Count > 0)
+                return list.OrderBy(a => a.DisplayName).ToList();
+        }
+        catch { }
+
+        return knownApps.Select(kv => new AndroidAppInfo(kv.Key, kv.Value)).ToList();
+    }
+
+    public bool StartSingleApp(string packageName, string title)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        var serial = _wired.Snapshot.ConnectedSerials.FirstOrDefault();
+        return _screenMirror.StartApp(packageName, title, serial);
+    }
+
+    public async Task<(bool success, string message)> InstallApkAsync(string apkPath, CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        if (!File.Exists(apkPath))
+            return (false, $"APK file not found: {apkPath}");
+
+        var adb = NativeAdbWiredService.FindAdbPath();
+        if (adb is null)
+            return (false, "ADB executable not found to install APK.");
+
+        var serial = _wired.Snapshot.ConnectedSerials.FirstOrDefault();
+        var sArg = !string.IsNullOrEmpty(serial) ? $"-s {serial} " : "";
+
+        try
+        {
+            using var proc = new System.Diagnostics.Process
+            {
+                StartInfo = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = adb,
+                    Arguments = $"{sArg}install -r \"{apkPath}\"",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                }
+            };
+            proc.Start();
+            var outTask = proc.StandardOutput.ReadToEndAsync(cancellationToken);
+            var errTask = proc.StandardError.ReadToEndAsync(cancellationToken);
+            await proc.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+            var output = await outTask.ConfigureAwait(false);
+            var error = await errTask.ConfigureAwait(false);
+
+            var combined = $"{output} {error}".Trim();
+            var success = combined.Contains("Success", StringComparison.OrdinalIgnoreCase);
+            return (success, success ? "APK installed successfully on phone." : $"Install result: {combined}");
+        }
+        catch (Exception ex)
+        {
+            return (false, $"Failed to install APK: {ex.Message}");
+        }
+    }
+
     [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
     private static extern bool LockWorkStation();
 
@@ -397,7 +538,7 @@ public sealed class NativeCoreClient : INativeCoreClient
             _firewallStatus.IsAllowed, _firewallStatus.Message, _clipboard?.Snapshot,
             _files.Snapshot, _remoteInput.Snapshot, _notifications.Snapshot,
             _screenMirror.Snapshot, _audio.Snapshot, _wired.Snapshot,
-            _phoneTelemetry);
+            _phoneTelemetry, _edgeCrossing.Snapshot);
     }
 
     private void Publish(string? status = null)
@@ -418,6 +559,7 @@ public sealed class NativeCoreClient : INativeCoreClient
             _status = "Stopped";
             _clipboard?.Dispose();
             _files.Dispose();
+            _edgeCrossing.Dispose();
             _screenMirror.Dispose();
             await _wired.DisposeAsync().ConfigureAwait(false);
             await _host.DisposeAsync().ConfigureAwait(false);

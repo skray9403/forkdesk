@@ -28,8 +28,12 @@ public sealed record NativeCoreSnapshot(
     ScreenMirrorSnapshot? ScreenMirror = null,
     AudioRoutingSnapshot? AudioRouting = null,
     AdbWiredSnapshot? AdbWired = null,
-    PhoneTelemetry? Phone = null)
+    PhoneTelemetry? Phone = null,
+    EdgeCrossingSnapshot? EdgeCrossing = null)
 {
     public static NativeCoreSnapshot Unavailable(string status) =>
         new(false, status, Array.Empty<NearbyPeer>());
 }
+
+public sealed record AndroidAppInfo(string PackageName, string DisplayName);
+

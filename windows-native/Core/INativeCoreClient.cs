@@ -26,4 +26,8 @@ public interface INativeCoreClient : IAsyncDisposable
     Task TriggerWiredScanAsync(CancellationToken cancellationToken = default);
     Task RingPhoneAsync(bool ring, CancellationToken cancellationToken = default);
     Task LockPhoneAsync(CancellationToken cancellationToken = default);
+    Task SetEdgeCrossingOptionsAsync(EdgeCrossingOptions options, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<AndroidAppInfo>> GetInstalledAndroidAppsAsync(CancellationToken cancellationToken = default);
+    bool StartSingleApp(string packageName, string title);
+    Task<(bool success, string message)> InstallApkAsync(string apkPath, CancellationToken cancellationToken = default);
 }

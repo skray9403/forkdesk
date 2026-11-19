@@ -72,7 +72,13 @@ public sealed partial class RemotePage : Page
         UpdateLayoutHint();
 
         var remote = snapshot.RemoteInput;
-        if (remote is not null)
+        var crossing = snapshot.EdgeCrossing;
+
+        if (crossing is not null && crossing.IsCrossing)
+        {
+            StatusText.Text = $"Mouse pointer currently active on {_peerName} ({crossing.RemoteX}, {crossing.RemoteY}). Pull mouse back past edge or press Escape to return.";
+        }
+        else if (remote is not null)
         {
             StatusText.Text = remote.Enabled
                 ? (snapshot.ConnectedDevice is not null
@@ -143,6 +149,7 @@ public sealed partial class RemotePage : Page
     {
         if (ResistanceValueText is not null)
             ResistanceValueText.Text = e.NewValue > 0 ? $"{e.NewValue:0} px" : "None";
+        OnOptionChanged(sender, new RoutedEventArgs());
     }
 
     private void BleInputToggle_Toggled(object sender, RoutedEventArgs e)
@@ -169,5 +176,14 @@ public sealed partial class RemotePage : Page
             AllowKeyboard: KeyboardCheckBox.IsChecked == true);
 
         _ = _core.SetRemoteInputOptionsAsync(options);
+
+        var crossingOptions = new EdgeCrossingOptions(
+            Side: _activeSide,
+            ResistancePx: ResistanceSlider.Value,
+            Enabled: EnabledToggle.IsOn,
+            BleInput: BleInputToggle.IsOn,
+            ShakeHome: ShakeHomeCheckBox.IsChecked == true);
+
+        _ = _core.SetEdgeCrossingOptionsAsync(crossingOptions);
     }
 }

@@ -474,6 +474,53 @@ To achieve complete visual and functional parity with the original Windows deskt
 | **Screen Mirroring (Scrcpy)** | Child process `scrcpy.exe` | Native Process runner for `scrcpy.exe` | **100% Parity** | Launches bundled or system `scrcpy` with optimized args |
 | **File Transfer** | WebSocket chunks via Node stream | Async stream chunking via TCP | **100% Parity** | Native buffer handling without V8 memory serialization |
 | **Cross-Platform Mesh (Mac/iOS/Linux)**| Included heavy mesh routing code | **Purposely Stripped** | **Intentional Optimization** | Zero overhead for non-Windows platforms, cleaner codebase |
+| **Mouse Edge Crossing to Phone** | `crossing.js` + `Capture.cs` | Native `NativeEdgeCrossingService.cs` | **100% Parity** | Low-level Win32 hook (`WH_MOUSE_LL`), pushes cursor onto Android overlay |
+| **Interactive Desk Arrangement** | `kvm-map-ui.js` | 3x3 Visual Desk Picker (`RemotePage.xaml`) | **100% Parity** | Drag/click left/right/above/below screen arrangement |
+| **Over Bluetooth on Busy Wi-Fi** | `bleinput.js` / `Ble.cs` | Native BLE Fallback Toggle | **100% Parity** | Off by default; pointer/keys ride low-latency lane |
+| **Single Android Apps in Windows** | scrcpy child window wrapper | `NativeScreenMirrorService.StartApp` | **100% Parity** | Launches apps in individual windows side-by-side with PC apps |
+| **Direct APK Installation** | `apkinstall.js` | `InstallApkAsync` via ADB | **100% Parity** | Install `.apk` files directly from PC with zero command line |
+| **Phone Camera as Webcam** | `camera-view.js` | Scrcpy `--video-source=camera` | **100% Parity** | 720p to 4K low-latency phone camera stream |
+| **Phone as PC Microphone** | `mic.js` / `btaudio.js` | Scrcpy `--audio-source=mic` | **100% Parity** | Wireless audio routing without virtual cable latency |
+| **ReZume (Pick up where you left)**| Browser extension + Node sync | Preserved lightweight protocol | **Lightweight Ready** | Syncs active tab URLs and media playback without Node daemon |
+
+---
+
+## 12. Mouse Edge Crossing & Real-Time Android Pointer (`NativeEdgeCrossingService.cs`)
+
+One of the marquee features of TwinDesk is the ability to push the computer's mouse pointer past the screen edge and have it seamlessly carry on directly onto the phone screen:
+
+1. **Win32 Low-Level Mouse & Keyboard Hooks (`WH_MOUSE_LL` / `WH_KEYBOARD_LL`):**
+   - Implemented inside a dedicated STA background thread (`TwinDesk.EdgeCrossing.HookThread`) with a message pump to ensure 0 ms latency without interfering with the WinUI 3 render loop.
+   - Constantly samples cursor position against virtual desktop metrics (`SM_XVIRTUALSCREEN`, `SM_YVIRTUALSCREEN`, `SM_CXVIRTUALSCREEN`, `SM_CYVIRTUALSCREEN`).
+2. **Configurable Edge Resistance & Desk Alignment:**
+   - Detects when the cursor reaches the configured outer edge (Right, Left, Above, or Below) as set in the Desk Arrangement Map on `RemotePage.xaml`.
+   - Accumulates outward push vectors against `ResistancePx` (default: 50 px) to prevent accidental crossings during rapid flicking.
+3. **Android Screen Arrow Overlay (`Pointer.kt`):**
+   - When crossing is triggered, the Windows cursor is locked and parked at the edge, and TwinDesk begins streaming `{ "t": "phone.pointer", "on": true, "x": px, "y": py }` over the authenticated WebSocket session.
+   - The Android app (`Pointer.kt`) renders a real-time black/white hardware arrow overlay (`TYPE_APPLICATION_OVERLAY` or `TYPE_ACCESSIBILITY_OVERLAY`) matching the physical phone resolution (e.g. 1080x2400).
+4. **Touch & Gesture Injection:**
+   - Mouse clicks are translated into touch events `{ "t": "phone.in", "a": "d"|"u", "x", "y" }` with an automatic high-speed ADB tap fallback (`adb shell input tap x y`).
+   - Right-click maps directly to the Android `KEYCODE_BACK`.
+   - Mouse wheel scrolls map to `{ "t": "phone.in", "a": "s", ... }`.
+5. **Emergency Return & Pull-Back:**
+   - Pulling the mouse cursor back inward across the resistance threshold instantly cancels crossing, emits `{ "t": "phone.pointer", "on": false }`, and restores the Windows cursor inside the desktop.
+   - Emergency Escape: Pressing `Esc` or `Right Alt` immediately returns the cursor to Windows.
+   - Shake-to-return: Shaking the mouse left and right rapidly instantly pulls the pointer back home.
+
+---
+
+## 13. Standalone Android Apps in Desktop Windows & Direct APK Installer
+
+To support using individual Android apps in separate desktop windows side-by-side with Windows software:
+
+1. **Standalone App Launcher (`ScreenPage.xaml` & `NativeScreenMirrorService.cs`):**
+   - Quick launch buttons for popular apps: **WhatsApp**, **Telegram**, **Instagram**, **Chrome**, **YouTube**, **ChatGPT**, **Ente Photos**, and **Settings**.
+   - Custom Package input box: allows launching any installed Android app by package name (e.g. `com.pockethost`, `com.termux`).
+   - Automatically resolves launcher activity and launches dedicated, titled Windows display instances via `scrcpy --window-title="TwinDesk - <AppName>"`.
+2. **APK Direct Installer:**
+   - Built-in installer card on `ScreenPage.xaml` accepting local `.apk` file paths.
+   - Dispatches `adb install -r "<path>"` in the background and reports real-time installation feedback to the user.
+
 
 
 

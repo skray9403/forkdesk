@@ -161,7 +161,57 @@ public sealed class NativeScreenMirrorService : IDisposable
         }
     }
 
+    public bool StartApp(string packageName, string title, string? serial = null)
+    {
+        var scrcpy = FindScrcpyPath();
+        if (scrcpy is null) return false;
+
+        var adb = NativeAdbWiredService.FindAdbPath();
+        if (adb is not null)
+        {
+            try
+            {
+                var sArg = !string.IsNullOrEmpty(serial) ? $"-s {serial} " : "";
+                using var p = Process.Start(new ProcessStartInfo
+                {
+                    FileName = adb,
+                    Arguments = $"{sArg}shell monkey -p {packageName} -c android.intent.category.LAUNCHER 1",
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                });
+                p?.WaitForExit(3000);
+            }
+            catch { }
+        }
+
+        var args = new List<string>
+        {
+            $"--window-title=\"TwinDesk - {title}\""
+        };
+        if (!string.IsNullOrEmpty(serial))
+        {
+            args.Add($"-s {serial}");
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = scrcpy,
+                Arguments = string.Join(" ", args),
+                UseShellExecute = false,
+                CreateNoWindow = true
+            });
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     public void Dispose()
+
     {
         StopMirroring();
     }

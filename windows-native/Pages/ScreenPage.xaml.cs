@@ -121,4 +121,50 @@ public sealed partial class ScreenPage : Page
     {
         _core?.StopScreenMirroring();
     }
+
+    private void LaunchApp_Click(object sender, RoutedEventArgs e)
+    {
+        if (_core is null || sender is not Button { Tag: string tag }) return;
+        var parts = tag.Split('|');
+        var pkg = parts[0];
+        var title = parts.Length > 1 ? parts[1] : pkg;
+
+        AppLaunchStatusText.Text = $"Launching {title} in standalone window...";
+        var success = _core.StartSingleApp(pkg, title);
+        AppLaunchStatusText.Text = success
+            ? $"Launched {title} ({pkg}) in standalone desktop window."
+            : $"Failed to launch {title}. Ensure phone is unlocked and scrcpy is installed.";
+    }
+
+    private void LaunchCustomPackage_Click(object sender, RoutedEventArgs e)
+    {
+        if (_core is null) return;
+        var pkg = CustomPackageBox.Text.Trim();
+        if (string.IsNullOrEmpty(pkg))
+        {
+            AppLaunchStatusText.Text = "Please enter an Android package name (e.g. com.whatsapp).";
+            return;
+        }
+
+        AppLaunchStatusText.Text = $"Launching {pkg}...";
+        var success = _core.StartSingleApp(pkg, pkg);
+        AppLaunchStatusText.Text = success
+            ? $"Launched {pkg} in standalone desktop window."
+            : $"Failed to launch {pkg}. Ensure package is installed and phone is connected.";
+    }
+
+    private async void InstallApk_Click(object sender, RoutedEventArgs e)
+    {
+        if (_core is null) return;
+        var path = ApkPathBox.Text.Trim();
+        if (string.IsNullOrEmpty(path))
+        {
+            ApkStatusText.Text = "Please enter the full path to an .apk file.";
+            return;
+        }
+
+        ApkStatusText.Text = $"Installing {System.IO.Path.GetFileName(path)} on phone...";
+        var (success, msg) = await _core.InstallApkAsync(path);
+        ApkStatusText.Text = msg;
+    }
 }

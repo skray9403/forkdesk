@@ -82,6 +82,121 @@
           </StackPanel>
         </Border>
 
+        <!-- Single Android Apps in Windows Card -->
+        <Border Padding="22" CornerRadius="12"
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+          <StackPanel Spacing="16">
+            <StackPanel Spacing="3">
+              <TextBlock Text="Android Apps in Windows" FontSize="20" FontWeight="SemiBold"/>
+              <TextBlock Text="Open single Android apps in standalone windows of their own, side by side with your desktop apps. Use your mouse and real PC keyboard."
+                         Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
+            </StackPanel>
+
+            <Grid ColumnSpacing="12" RowSpacing="10">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+              </Grid.ColumnDefinitions>
+              <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+              </Grid.RowDefinitions>
+
+              <Button Grid.Row="0" Grid.Column="0" HorizontalAlignment="Stretch" Click="LaunchApp_Click" Tag="com.whatsapp|WhatsApp">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <FontIcon Glyph="&#xE8BD;" FontSize="14"/>
+                  <TextBlock Text="WhatsApp"/>
+                </StackPanel>
+              </Button>
+
+              <Button Grid.Row="0" Grid.Column="1" HorizontalAlignment="Stretch" Click="LaunchApp_Click" Tag="org.telegram.messenger|Telegram">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <FontIcon Glyph="&#xE724;" FontSize="14"/>
+                  <TextBlock Text="Telegram"/>
+                </StackPanel>
+              </Button>
+
+              <Button Grid.Row="0" Grid.Column="2" HorizontalAlignment="Stretch" Click="LaunchApp_Click" Tag="com.instagram.android|Instagram">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <FontIcon Glyph="&#xEB9F;" FontSize="14"/>
+                  <TextBlock Text="Instagram"/>
+                </StackPanel>
+              </Button>
+
+              <Button Grid.Row="0" Grid.Column="3" HorizontalAlignment="Stretch" Click="LaunchApp_Click" Tag="com.android.chrome|Chrome">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <FontIcon Glyph="&#xE774;" FontSize="14"/>
+                  <TextBlock Text="Chrome"/>
+                </StackPanel>
+              </Button>
+
+              <Button Grid.Row="1" Grid.Column="0" HorizontalAlignment="Stretch" Click="LaunchApp_Click" Tag="com.google.android.youtube|YouTube">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <FontIcon Glyph="&#xE768;" FontSize="14"/>
+                  <TextBlock Text="YouTube"/>
+                </StackPanel>
+              </Button>
+
+              <Button Grid.Row="1" Grid.Column="1" HorizontalAlignment="Stretch" Click="LaunchApp_Click" Tag="com.openai.chatgpt|ChatGPT">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <FontIcon Glyph="&#xE946;" FontSize="14"/>
+                  <TextBlock Text="ChatGPT"/>
+                </StackPanel>
+              </Button>
+
+              <Button Grid.Row="1" Grid.Column="2" HorizontalAlignment="Stretch" Click="LaunchApp_Click" Tag="io.ente.photos|Photos">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <FontIcon Glyph="&#xEB9F;" FontSize="14"/>
+                  <TextBlock Text="Photos"/>
+                </StackPanel>
+              </Button>
+
+              <Button Grid.Row="1" Grid.Column="3" HorizontalAlignment="Stretch" Click="LaunchApp_Click" Tag="com.android.settings|Settings">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <FontIcon Glyph="&#xE713;" FontSize="14"/>
+                  <TextBlock Text="Settings"/>
+                </StackPanel>
+              </Button>
+            </Grid>
+
+            <Grid ColumnSpacing="10" Margin="0,4,0,0">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+              </Grid.ColumnDefinitions>
+              <TextBox x:Name="CustomPackageBox" PlaceholderText="Launch any installed package, e.g. com.pockethost or com.termux"/>
+              <Button Grid.Column="1" Content="Launch App" Click="LaunchCustomPackage_Click"/>
+            </Grid>
+            <TextBlock x:Name="AppLaunchStatusText" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+          </StackPanel>
+        </Border>
+
+        <!-- Install APK Card -->
+        <Border Padding="22" CornerRadius="12"
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+          <StackPanel Spacing="14">
+            <StackPanel Spacing="3">
+              <TextBlock Text="Install .apk straight from computer" FontSize="20" FontWeight="SemiBold"/>
+              <TextBlock Text="Install Android APK applications onto your connected phone directly with zero command-line steps."
+                         Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
+            </StackPanel>
+
+            <Grid ColumnSpacing="12">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+              </Grid.ColumnDefinitions>
+              <TextBox x:Name="ApkPathBox" PlaceholderText="Path to .apk file (e.g. F:\Downloads\app.apk)"/>
+              <Button Grid.Column="1" Content="Install APK" Style="{ThemeResource AccentButtonStyle}" Click="InstallApk_Click"/>
+            </Grid>
+            <TextBlock x:Name="ApkStatusText" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+          </StackPanel>
+        </Border>
+
         <!-- Protocol Details Card -->
         <Border Padding="22" CornerRadius="12"
             Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
