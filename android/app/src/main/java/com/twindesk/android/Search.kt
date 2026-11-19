@@ -5,6 +5,10 @@
 // (shared/search-index.js → SearchIndex.kt); the matcher is the same as theirs.
 package com.twindesk.android
 
+import androidx.compose.animation.CapturedAnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,6 +23,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.layout.LazyLayoutCacheWindow
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Icon
@@ -122,9 +129,11 @@ object Search {
 }
 
 // The search page, over everything: a native Material input followed by standard list results.
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun SearchScreen(pages: List<Pair<String, String>>, go: (String) -> Unit) {
-    var q by rememberSaveable { mutableStateOf("") }
+    val queryState = rememberTextFieldState()
+    val q = queryState.text.toString()
     val items = remember(pages) { Search.items(pages) }
     val found = remember(q, items) { Search.match(q, items).take(20) }
     val focus = remember { FocusRequester() }
@@ -138,15 +147,14 @@ fun SearchScreen(pages: List<Pair<String, String>>, go: (String) -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             OutlinedTextField(
-                value = q,
-                onValueChange = { q = it },
+                state = queryState,
                 modifier = Modifier.weight(1f).focusRequester(focus),
-                singleLine = true,
+                lineLimits = TextFieldLineLimits.SingleLine,
                 placeholder = { Text(tr("Search settings and features"), maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 leadingIcon = { Icon(Ico.search, contentDescription = null) },
                 trailingIcon = {
                     if (q.isNotEmpty()) {
-                        IconButton(onClick = { q = "" }) {
+                        IconButton(onClick = { queryState.edit { delete(0, length); placeCursorAtEnd() } }) {
                             Icon(Ico.close, contentDescription = tr("Clear"))
                         }
                     }
@@ -159,7 +167,11 @@ fun SearchScreen(pages: List<Pair<String, String>>, go: (String) -> Unit) {
             }
         }
 
-        if (found.isEmpty()) {
+        CapturedAnimatedVisibility(
+            visible = found.isEmpty(),
+            enter = fadeIn(),
+            exit = fadeOut()
+        ) {
             Text(
                 if (q.isBlank()) tr("Try “share pc audio to phone”, “dark mode” or “send a file”") else tr("Nothing found"),
                 style = MaterialTheme.typography.bodyMedium,
@@ -168,7 +180,10 @@ fun SearchScreen(pages: List<Pair<String, String>>, go: (String) -> Unit) {
             )
         }
 
-        LazyColumn(Modifier.fillMaxWidth().weight(1f)) {
+        LazyColumn(
+            modifier = Modifier.fillMaxWidth().weight(1f),
+            cacheWindow = LazyLayoutCacheWindow(ahead = 120.dp, behind = 40.dp)
+        ) {
             itemsIndexed(found) { index, item ->
                 ListItem(
                     content = {
