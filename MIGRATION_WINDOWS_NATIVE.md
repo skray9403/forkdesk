@@ -226,5 +226,33 @@ dotnet publish TwinDesk.Native.csproj --configuration Release -r win-x64 -p:Plat
   - Create native `NotificationsPage.xaml` for viewing and clearing mirrored phone notifications.
 * **Stage 5 (Interactive Features):**
   - Connect `windows-helper/src/Capture.cs` and `windows-helper/src/Inject.cs` into `windows-native/` to enable screen sharing and remote mouse/keyboard control.
-* **Stage 6 (Packaging & Parity):**
-  - Replace Electron NSIS installer with an MSIX / WiX native installer once full feature parity is achieved.
+* **Stage 6 (Packaging & Installer Architecture):**
+  - Designed and implemented a pure native NSIS installer generator (`windows-native/installer/installer.nsi`) and embedded PE application icon (`installer/icon.ico`) into `TwinDesk.exe`.
+  - Configured GitHub Actions CI (`build-native-windows.yml`) to automatically compile and publish native single-file installers (`TwinDesk-Native-Setup-x64.exe` and `TwinDesk-Native-Setup-arm64.exe`) with automatic firewall rule configuration and 64-bit uninstaller integration.
+
+---
+
+## 7. Native Executable & Installer Packaging (GitHub CI Pipeline)
+
+### A. Rationale & Problem Statement
+* Previously, the GitHub Actions CI workflow `build-native-windows.yml` published output bundles solely as nested ZIP archives (`TwinDesk-windows-x64.zip` uploaded into GitHub artifact `TwinDesk-Windows-x64.zip`).
+* This required users to download an archive containing another archive, manually extract 150+ loose assemblies (`coreclr.dll`, WinUI 3 projections, WinAppSDK bootstrappers), and run without desktop integration, start menu shortcuts, or automatic firewall elevation.
+* Meanwhile, the legacy Electron workflow (`build-windows.yml`) produced a single `TwinDesk-Setup-*.exe` via NSIS.
+* To achieve feature parity and provide a production-ready zero-overhead distribution, a native installer pipeline was engineered for the WinUI 3 / .NET 10 app.
+
+### B. Architecture of the Native Installer (`windows-native/installer/installer.nsi`)
+1. **Zero-Web Overhead:** The installer is compiled using Nullsoft Scriptable Install System (NSIS) with solid LZMA compression (`SetCompressor /SOLID lzma`). It does not invoke Electron, Node.js, or web scripts.
+2. **Elevated Network Configuration:** Automatically adds inbound firewall rules for `TwinDesk.exe` and TCP port 47800 (used for Android companion TLS discovery & control) so regular users on private and public networks never face blocked connections.
+3. **Application Icon Embedding:** Added `<ApplicationIcon>installer/icon.ico</ApplicationIcon>` in `TwinDesk.Native.csproj` so the executable PE header and Taskbar icon show the official branded TwinDesk icon rather than a generic Windows app icon.
+4. **Clean Uninstall & Update Lifecycle:**
+   - Detects and gracefully terminates running `TwinDesk.exe` processes before installation or uninstallation (`taskkill /F /T /IM TwinDesk.exe`).
+   - Writes 64-bit registry entries under `HKLM\Software\Microsoft\Windows\CurrentVersion\Uninstall\TwinDesk` for Windows "Installed Apps" / Control Panel integration.
+   - Cleans up firewall rules, Start Menu shortcuts, and installation directory on removal.
+
+### C. CI Pipeline Artifacts Produced
+Upon push or `workflow_dispatch` to `main` or `native-windows-*`, the GitHub Actions runner automatically builds and attaches the following downloadable artifacts:
+1. `TwinDesk-Native-Setup-x64`: Single-file installer executable (`TwinDesk-Native-Setup-x64.exe`).
+2. `TwinDesk-Native-Setup-ARM64`: Single-file installer executable (`TwinDesk-Native-Setup-arm64.exe`).
+3. `TwinDesk-x64-exe`: Standalone unpackaged executable (`TwinDesk.exe`).
+4. `TwinDesk-ARM64-exe`: Standalone unpackaged executable (`TwinDesk.exe`).
+5. `TwinDesk-Windows-x64` / `TwinDesk-Windows-ARM64`: Portable complete runtime zip archives.

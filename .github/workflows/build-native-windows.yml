@@ -111,6 +111,17 @@ jobs:
       - name: Package x64
         shell: pwsh
         run: Compress-Archive -Path artifacts/win-x64/* -DestinationPath artifacts/TwinDesk-windows-x64.zip -Force
+      - name: Build x64 NSIS Installer EXE
+        shell: pwsh
+        run: |
+          $makensis = (Get-Command makensis -ErrorAction SilentlyContinue)?.Source
+          if (-not $makensis -and (Test-Path "C:\Program Files (x86)\NSIS\makensis.exe")) {
+            $makensis = "C:\Program Files (x86)\NSIS\makensis.exe"
+          }
+          if (-not $makensis) { throw "makensis not found on runner" }
+          Write-Host "Compiling x64 NSIS installer using: $makensis"
+          & $makensis /V4 /DARCH=x64 "/DOUTFILE=$((Get-Location).Path)/artifacts/TwinDesk-Native-Setup-x64.exe" "/DSOURCE_DIR=$((Get-Location).Path)/artifacts/win-x64" "/DICON_PATH=$((Get-Location).Path)/installer/icon.ico" "/DLICENSE_PATH=$((Get-Location).Path)/../LICENSE" installer/installer.nsi
+          if (-not (Test-Path artifacts/TwinDesk-Native-Setup-x64.exe)) { throw "Failed to build x64 NSIS installer EXE" }
 
       - name: Restore ARM64
         run: dotnet restore TwinDesk.Native.csproj -r win-arm64 -p:SelfContained=true
@@ -127,7 +138,46 @@ jobs:
       - name: Package ARM64
         shell: pwsh
         run: Compress-Archive -Path artifacts/win-arm64/* -DestinationPath artifacts/TwinDesk-windows-arm64.zip -Force
+      - name: Build ARM64 NSIS Installer EXE
+        shell: pwsh
+        run: |
+          $makensis = (Get-Command makensis -ErrorAction SilentlyContinue)?.Source
+          if (-not $makensis -and (Test-Path "C:\Program Files (x86)\NSIS\makensis.exe")) {
+            $makensis = "C:\Program Files (x86)\NSIS\makensis.exe"
+          }
+          if (-not $makensis) { throw "makensis not found on runner" }
+          Write-Host "Compiling ARM64 NSIS installer using: $makensis"
+          & $makensis /V4 /DARCH=arm64 "/DOUTFILE=$((Get-Location).Path)/artifacts/TwinDesk-Native-Setup-arm64.exe" "/DSOURCE_DIR=$((Get-Location).Path)/artifacts/win-arm64" "/DICON_PATH=$((Get-Location).Path)/installer/icon.ico" "/DLICENSE_PATH=$((Get-Location).Path)/../LICENSE" installer/installer.nsi
+          if (-not (Test-Path artifacts/TwinDesk-Native-Setup-arm64.exe)) { throw "Failed to build ARM64 NSIS installer EXE" }
 
+      - name: Upload x64 Setup Installer EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: TwinDesk-Native-Setup-x64
+          path: windows-native/artifacts/TwinDesk-Native-Setup-x64.exe
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload ARM64 Setup Installer EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: TwinDesk-Native-Setup-ARM64
+          path: windows-native/artifacts/TwinDesk-Native-Setup-arm64.exe
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload x64 Standalone Executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: TwinDesk-x64-exe
+          path: windows-native/artifacts/win-x64/TwinDesk.exe
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload ARM64 Standalone Executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: TwinDesk-ARM64-exe
+          path: windows-native/artifacts/win-arm64/TwinDesk.exe
+          if-no-files-found: error
+          retention-days: 30
       - name: Upload x64 build
         uses: actions/upload-artifact@v4
         with:

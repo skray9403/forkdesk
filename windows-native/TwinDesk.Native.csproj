@@ -7,6 +7,7 @@
     <RootNamespace>TwinDesk.Native</RootNamespace>
     <AssemblyName>TwinDesk</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>installer\icon.ico</ApplicationIcon>
     <UseWinUI>true</UseWinUI>
     <EnableMsixTooling>true</EnableMsixTooling>
     <WindowsPackageType>None</WindowsPackageType>
