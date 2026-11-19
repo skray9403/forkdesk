@@ -580,7 +580,7 @@ fun MacSlider(
     Row(verticalAlignment = Alignment.CenterVertically) {
         Slider(
             state = sliderState,
-            onValueChange = {},
+            onValueChange = { sliderState.value = it },
             onValueChangeFinished = { onDone(sliderState.value) },
             modifier = Modifier.weight(1f),
         )
