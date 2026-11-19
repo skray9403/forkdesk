@@ -47,6 +47,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.rememberSliderState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -54,6 +55,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -565,18 +567,25 @@ fun MacSlider(
     format: (Float) -> String,
     onDone: (Float) -> Unit,
 ) {
-    var current by remember(value) { mutableFloatStateOf(value) }
+    val sliderState = rememberSliderState(
+        value = value,
+        steps = steps,
+        trackRange = range
+    )
+    LaunchedEffect(value) {
+        if (!sliderState.isDragging && sliderState.value != value) {
+            sliderState.value = value
+        }
+    }
     Row(verticalAlignment = Alignment.CenterVertically) {
         Slider(
-            value = current,
-            onValueChange = { current = it },
-            valueRange = range,
-            steps = steps,
-            onValueChangeFinished = { onDone(current) },
+            state = sliderState,
+            onValueChange = {},
+            onValueChangeFinished = { onDone(sliderState.value) },
             modifier = Modifier.weight(1f),
         )
         Text(
-            format(current),
+            format(sliderState.value),
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.width(52.dp),
