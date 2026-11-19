@@ -45,6 +45,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MaterialExpressiveTheme
+import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
@@ -182,7 +183,11 @@ fun Theme(content: @Composable () -> Unit) {
     )
 
     CompositionLocalProvider(LocalPalette provides p) {
-        MaterialExpressiveTheme(colorScheme = scheme, content = content)
+        MaterialExpressiveTheme(
+            colorScheme = scheme,
+            motionScheme = MotionScheme.expressive(),
+            content = content
+        )
     }
 }
 

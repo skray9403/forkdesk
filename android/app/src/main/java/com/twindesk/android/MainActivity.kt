@@ -60,7 +60,6 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.Badge
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonMenu
 import androidx.compose.material3.FloatingActionButtonMenuItem
@@ -266,7 +265,6 @@ private fun them(core: Core) = core.host?.name ?: core.hosts().firstOrNull()?.na
 // is on Bluetooth, saying so, with Connect with Wi-Fi Direct (WifiGate).
 private fun wifiOnly(core: Core, t: Tab) = (t == Tab.Sound || t == Tab.Photos) && core.host != null && core.link.ble
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun App(core: Core, resumed: Int) {
     val v by core.version.collectAsState()
