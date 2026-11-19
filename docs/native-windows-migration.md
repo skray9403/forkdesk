@@ -44,8 +44,10 @@ tests and other desktop clients remain separate deliverables.
 3. Android/Windows connectivity: native discovery, pairing approval, identity
    storage, authentication, TLS/session management and Android compatibility tests.
    USB and wireless-debugging paths remain pending.
-4. Everyday continuity: native text clipboard synchronization is implemented.
-   File transfer, shared folders, phone status and notifications remain pending.
+4. Everyday continuity: native text clipboard synchronization and protocol-v1
+   bidirectional file transfers (with streaming 64 KB chunks, SHA-256 integrity,
+   and collision avoidance) are implemented. Shared folders, phone status and
+   notifications remain pending.
 5. Interactive features: port remote input, screen capture/viewing, audio, camera
    and related Windows APIs.
 6. Feature completion: port updates, settings, calls, app launching, virtual devices

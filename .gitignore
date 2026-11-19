@@ -35,3 +35,8 @@ native/tdfast/target/
 mac-helper/lib/
 linux-helper/lib/
 windows/fullkvm/bin/
+# Windows native build output
+windows-native/**/bin/
+windows-native/**/obj/
+windows-native/artifacts/
+windows-native/TestResults/

@@ -1,0 +1,79 @@
+<Page x:Class="TwinDesk.Native.Pages.FilesPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+    <ScrollViewer>
+      <StackPanel Padding="32" Spacing="22" MaxWidth="900" HorizontalAlignment="Left">
+        <StackPanel Spacing="4">
+          <TextBlock Text="Files" FontSize="30" FontWeight="SemiBold"/>
+          <TextBlock Text="Transfer files directly between this Windows PC and connected Android or Windows devices"
+              Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
+        </StackPanel>
+
+        <InfoBar IsOpen="True" IsClosable="False" Severity="Informational"
+            Title="Direct peer file transfer"
+            Message="Native chunked transfer over authenticated TLS with SHA-256 streaming verification. No Chromium, Electron or cloud relay involved."/>
+
+        <!-- Send Card -->
+        <Border Padding="22" CornerRadius="12"
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+          <StackPanel Spacing="14">
+            <TextBlock Text="Send file to peer" FontSize="20" FontWeight="SemiBold"/>
+            <TextBlock Text="Select any file on this PC to stream directly to the connected Android or Windows device."
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
+            
+            <Grid ColumnSpacing="12">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+              </Grid.ColumnDefinitions>
+              <TextBox x:Name="FilePathBox" PlaceholderText="Enter or select file path to send…" VerticalAlignment="Center"/>
+              <Button x:Name="BrowseButton" Grid.Column="1" Content="Browse…" Click="BrowseButton_Click" VerticalAlignment="Center"/>
+              <Button x:Name="SendButton" Grid.Column="2" Content="Send" Style="{ThemeResource AccentButtonStyle}" Click="SendButton_Click" VerticalAlignment="Center"/>
+            </Grid>
+            <TextBlock x:Name="SendStatusText" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+          </StackPanel>
+        </Border>
+
+        <!-- Options Card -->
+        <Border Padding="22" CornerRadius="12"
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+          <StackPanel Spacing="14">
+            <TextBlock Text="Transfer settings" FontSize="20" FontWeight="SemiBold"/>
+            <CheckBox x:Name="EnabledCheckBox" Content="Allow file transfers with connected devices"
+                Checked="OnOptionChanged" Unchecked="OnOptionChanged"/>
+            <StackPanel Spacing="6">
+              <TextBlock Text="Save incoming files to:" Foreground="{ThemeResource TextFillColorSecondaryBrush}" FontSize="13"/>
+              <TextBlock x:Name="DownloadDirText" Text="Downloads/TwinDesk" FontWeight="Medium" TextWrapping="Wrap"/>
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <!-- Active Transfers Card -->
+        <Border Padding="22" CornerRadius="12"
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+          <StackPanel Spacing="12">
+            <TextBlock Text="Active transfers" FontSize="18" FontWeight="SemiBold"/>
+            <TextBlock x:Name="NoActiveTransfersText" Text="No active file transfers." Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+            <StackPanel x:Name="ActiveTransfersPanel" Spacing="10"/>
+          </StackPanel>
+        </Border>
+
+        <!-- Recent Transfers Card -->
+        <Border Padding="22" CornerRadius="12"
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+          <StackPanel Spacing="12">
+            <TextBlock Text="Transfer history" FontSize="18" FontWeight="SemiBold"/>
+            <TextBlock x:Name="NoHistoryText" Text="No recent transfers in this session." Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+            <StackPanel x:Name="HistoryTransfersPanel" Spacing="8"/>
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
+</Page>

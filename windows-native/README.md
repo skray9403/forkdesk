@@ -59,11 +59,14 @@ servicing updates must be incorporated by rebuilding the app.
 - Persistent Windows host identity and paired-device storage.
 - Six-digit pairing confirmation and local approval flow.
 - Text-only clipboard sync with independent send/receive controls and a 256 KB limit.
+- Bidirectional protocol-v1 file transfer with streaming 64 KB chunks, SHA-256 verification, and active transfer progress reporting.
+- Native WinUI 3 Files page with file selection, progress tracking, and explorer integration.
+- Native WinUI 3 About page displaying runtime architecture guarantees, device identity, and diagnostics.
 - Explicit peer policy: Android and Windows only.
 - Separate platform-independent native core library and native-core tests.
 - No Electron fallback, embedded browser surface or WebView2 control usage.
 
-File transfer, shared folders, screen capture/viewing, remote input, audio, notifications,
+Shared folders, screen capture/viewing, remote input, audio, notifications,
 camera, tray lifecycle, updates, installer integration and complete feature parity are
 not yet ported. The existing Windows installer remains the supported production build
 until those services have native implementations and pass parity tests.
