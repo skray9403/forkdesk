@@ -23,4 +23,5 @@ public interface INativeCoreClient : IAsyncDisposable
     void SetScreenMirrorOptions(ScreenMirrorOptions options);
     bool StartScreenMirroring(string? deviceAddress = null);
     void StopScreenMirroring();
+    Task TriggerWiredScanAsync(CancellationToken cancellationToken = default);
 }

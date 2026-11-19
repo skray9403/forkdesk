@@ -14,6 +14,7 @@ public sealed class NativeCoreClient : INativeCoreClient
     private readonly NativeNotificationService _notifications;
     private readonly NativeScreenMirrorService _screenMirror = new();
     private readonly NativeAudioRoutingService _audio;
+    private readonly NativeAdbWiredService _wired;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private bool _started;
     private bool _disposed;
@@ -59,6 +60,9 @@ public sealed class NativeCoreClient : INativeCoreClient
         _audio.SnapshotChanged += _ => Publish();
 
         _screenMirror.SnapshotChanged += _ => Publish();
+
+        _wired = new NativeAdbWiredService(identity.Id, identity.Name, discoveryOptions.Port, () => _host.ConnectedDevice is not null);
+        _wired.SnapshotChanged += _ => Publish();
     }
 
     public async Task StartAsync(CancellationToken cancellationToken = default)
@@ -94,6 +98,7 @@ public sealed class NativeCoreClient : INativeCoreClient
             }
 
             _firewallStatus = await Task.Run(() => _firewall.Check(), cancellationToken).ConfigureAwait(false);
+            _wired.Start();
             Publish();
         }
         finally
@@ -230,6 +235,12 @@ public sealed class NativeCoreClient : INativeCoreClient
         _screenMirror.StopMirroring();
     }
 
+    public Task TriggerWiredScanAsync(CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        return _wired.TriggerScanAsync(cancellationToken);
+    }
+
     private Task<bool> SendPeerMessageAsync(string message, CancellationToken cancellationToken) =>
         _host.SendToActiveSessionAsync(message, cancellationToken);
 
@@ -313,7 +324,7 @@ public sealed class NativeCoreClient : INativeCoreClient
             _host.PendingPairing, _host.PairedDevices, _host.ConnectedDevice,
             _firewallStatus.IsAllowed, _firewallStatus.Message, _clipboard?.Snapshot,
             _files.Snapshot, _remoteInput.Snapshot, _notifications.Snapshot,
-            _screenMirror.Snapshot, _audio.Snapshot);
+            _screenMirror.Snapshot, _audio.Snapshot, _wired.Snapshot);
     }
 
     private void Publish(string? status = null)
@@ -335,6 +346,7 @@ public sealed class NativeCoreClient : INativeCoreClient
             _clipboard?.Dispose();
             _files.Dispose();
             _screenMirror.Dispose();
+            await _wired.DisposeAsync().ConfigureAwait(false);
             await _host.DisposeAsync().ConfigureAwait(false);
             await _discovery.DisposeAsync().ConfigureAwait(false);
             Publish();

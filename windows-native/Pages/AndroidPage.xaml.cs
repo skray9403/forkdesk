@@ -63,6 +63,12 @@ public sealed partial class AndroidPage : Page
         FirewallInfoBar.IsOpen = !snapshot.FirewallAllowed;
         FirewallInfoBar.Message = snapshot.FirewallStatus;
         FixFirewallButton.IsEnabled = !snapshot.FirewallAllowed;
+
+        if (snapshot.AdbWired is not null)
+        {
+            UsbStatusText.Text = snapshot.AdbWired.Status;
+        }
+
         var androidPeers = snapshot.NearbyPeers
             .Where(peer => peer.Platform == PeerPlatform.Android)
             .ToArray();
@@ -309,6 +315,26 @@ public sealed partial class AndroidPage : Page
         finally
         {
             ManualPairButton.IsEnabled = true;
+        }
+    }
+
+    private async void ScanUsb_Click(object sender, RoutedEventArgs e)
+    {
+        var core = _core;
+        if (core is null) return;
+        ScanUsbButton.IsEnabled = false;
+        UsbStatusText.Text = "Scanning USB devices…";
+        try
+        {
+            await core.TriggerWiredScanAsync();
+        }
+        catch (Exception ex)
+        {
+            UsbStatusText.Text = $"Scan failed: {ex.Message}";
+        }
+        finally
+        {
+            ScanUsbButton.IsEnabled = true;
         }
     }
 }

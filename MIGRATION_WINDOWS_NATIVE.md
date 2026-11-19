@@ -369,3 +369,51 @@ The TwinDesk Android app communicates over two distinct channels:
    - **43 unit tests** passing with 0 failures.
    - Complete WinUI 3 release build verified (`TwinDesk.dll`, `0 Warning(s), 0 Error(s)`).
 
+---
+
+## 9. Phase 4: Native USB/ADB Wired Supervisor & End-to-End Pairing Verification
+
+### A. Problem Analysis & Rationale
+While Wi-Fi pairing via UDP discovery and WSS was implemented, users connecting their Android device via USB cable (with ADB enabled) experienced connection difficulty because the legacy Node.js/Electron application utilized a background supervisor (`windows/wired.js` / `mac/wired.js`) that had not yet been ported to native C#. 
+
+In the legacy architecture:
+1. `adb reverse tcp:47800 tcp:47800` is established to bridge the phone's loopback to the PC's host port.
+2. A privileged Android broadcast is sent to `com.twindesk.android/.WiredReceiver`:
+   ```bash
+   am broadcast -f 32 -n com.twindesk.android/.WiredReceiver --es host <hostId> --ei port 47800 --es nonce <nonce> --es name '<hostName>'
+   ```
+3. The Android application responds by immediately connecting to `wss://127.0.0.1:47800` through the cable, achieving ultra-low ~4ms round-trip latency without requiring local Wi-Fi multicast support or manual IP typing.
+4. For unpaired devices, the phone transmits `pair.start` carrying the USB nonce, auto-confirms the SAS code, and prompts the PC to approve pairing. Once approved, the pair record is committed to `paired.json`.
+
+### B. Implementation Details
+1. **`NativeAdbWiredService.cs` (`windows-native/Core/NativeAdbWiredService.cs`):**
+   - Implemented a zero-overhead native supervisor utilizing `PeriodicTimer` (every 3 seconds).
+   - Locates `adb.exe` across multiple discovery candidates (`AppContext.BaseDirectory`, `scrcpy`, `%LOCALAPPDATA%\Android\Sdk\platform-tools`, and system `PATH`).
+   - Discovers attached devices via `adb devices`, filtering for physical USB devices.
+   - Automatically provisions `adb reverse tcp:47800 tcp:47800`.
+   - When an unlinked device with `com.twindesk.android` is detected:
+     - Issues `cmd deviceidle tempwhitelist -d 30000 com.twindesk.android`.
+     - Generates cryptographically secure 8-byte nonce via `RandomNumberGenerator`.
+     - Broadcasts `WiredReceiver` intent to wake the app and initiate cable session or pairing.
+   - Fully asynchronous, non-blocking, and safely disposes via `IAsyncDisposable`.
+
+2. **Core Integration (`NativeCoreClient.cs` & `NativeCoreSnapshot.cs`):**
+   - Instantiated and supervised `_wired = new NativeAdbWiredService(...)`.
+   - Added `AdbWiredSnapshot` to `NativeCoreSnapshot` exposing live USB status and connected serials.
+   - Added `TriggerWiredScanAsync()` to `INativeCoreClient` allowing UI-triggered immediate polling.
+
+3. **UI Enhancements (`AndroidPage.xaml` / `AndroidPage.xaml.cs`):**
+   - Added a dedicated "USB Cable & ADB" card with real-time status telemetry (`UsbStatusText`) and a "Scan USB" action button.
+
+4. **Unit Tests & Quality Assurance (`NativeAdbWiredServiceTests.cs`):**
+   - Added 4 new tests validating initial snapshot state, executable discovery, scan safety, and idempotent disposal.
+   - Suite expanded to **47 passing unit tests** (0 failures).
+
+### C. Live Telemetry & Verification
+- **Pairing Verified:** The Pixel 8a (`19d50a7b0e30cc4d7ed85b866b30ae8e`) paired successfully with host `SKR` (`c1e6c7a2-67ce-43bb-afef-c5330c71337d`).
+- **Paired Record Committed:** `%LOCALAPPDATA%\TwinDesk.Native\paired.json` generated and verified with SHA-256 token hash.
+- **Connection Telemetry:** Established `ESTABLISHED` TCP 47800 connection via ADB reverse; Android UI reports `SKR · Connected · USB · 4 ms`.
+- **Remote Input Verified:** Win32 `SendInput` raw pointer translation tested via touchpad swipe gestures (`remote.mm`).
+- **Zero-Web Integrity:** Completely native WinUI 3 + .NET 10 binary with zero Electron or Chromium dependencies.
+
+

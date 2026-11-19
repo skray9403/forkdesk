@@ -44,7 +44,19 @@
             <TextBlock x:Name="DiscoveryStatusText" Text="Connecting to native discovery…" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
             <TextBlock x:Name="DeviceCountText" Text="No Android device snapshot yet" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
             <StackPanel x:Name="AndroidPeersPanel" Spacing="8"/>
-            <TextBlock Text="USB and wireless-debugging pairing paths are still pending. Current pairing uses the existing protocol-v1 TLS and UDP discovery." FontSize="12" Foreground="{ThemeResource TextFillColorTertiaryBrush}" TextWrapping="Wrap"/>
+          </StackPanel>
+        </Border>
+        <Border Padding="24" CornerRadius="12"
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+          <StackPanel Spacing="12">
+            <Grid>
+              <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+              <TextBlock Text="USB Cable &amp; ADB" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center"/>
+              <Button x:Name="ScanUsbButton" Grid.Column="1" Content="Scan USB" Click="ScanUsb_Click"/>
+            </Grid>
+            <TextBlock Text="When connected via USB with USB debugging enabled, TwinDesk automatically routes port 47800 and connects with 4ms latency without needing Wi-Fi." Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
+            <TextBlock x:Name="UsbStatusText" Text="Checking USB connection…" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
           </StackPanel>
         </Border>
         <Border Padding="24" CornerRadius="12"

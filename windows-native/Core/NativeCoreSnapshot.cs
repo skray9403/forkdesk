@@ -20,7 +20,8 @@ public sealed record NativeCoreSnapshot(
     RemoteInputSnapshot? RemoteInput = null,
     NotificationSnapshot? Notifications = null,
     ScreenMirrorSnapshot? ScreenMirror = null,
-    AudioRoutingSnapshot? AudioRouting = null)
+    AudioRoutingSnapshot? AudioRouting = null,
+    AdbWiredSnapshot? AdbWired = null)
 {
     public static NativeCoreSnapshot Unavailable(string status) =>
         new(false, status, Array.Empty<NearbyPeer>());
