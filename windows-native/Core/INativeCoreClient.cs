@@ -9,6 +9,9 @@ public interface INativeCoreClient : IAsyncDisposable
     Task ApprovePairingAsync(bool allow, CancellationToken cancellationToken = default);
     Task<bool> ForgetDeviceAsync(string deviceId, CancellationToken cancellationToken = default);
     Task SetClipboardOptionsAsync(ClipboardSyncOptions options, CancellationToken cancellationToken = default);
+    Task<string> SendFileAsync(string filePath, CancellationToken cancellationToken = default);
+    Task CancelFileTransferAsync(string transferId, CancellationToken cancellationToken = default);
+    Task SetFileTransferOptionsAsync(FileTransferOptions options, CancellationToken cancellationToken = default);
     Task FixFirewallAsync(CancellationToken cancellationToken = default);
     Task DisconnectAsync(CancellationToken cancellationToken = default);
 }

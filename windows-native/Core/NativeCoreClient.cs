@@ -9,6 +9,7 @@ public sealed class NativeCoreClient : INativeCoreClient
     private readonly NativePeerHost _host;
     private readonly NativeFirewallAccessService _firewall = new();
     private readonly ClipboardSyncService? _clipboard;
+    private readonly FileTransferService _files;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private bool _started;
     private bool _disposed;
@@ -36,9 +37,11 @@ public sealed class NativeCoreClient : INativeCoreClient
         _discovery.StatusChanged += (_, status) => Publish(status);
         _host.StateChanged += OnHostStateChanged;
         _host.AuthenticatedMessageReceived += HandlePeerMessageAsync;
+        _files = new FileTransferService(dataDirectory, identity.Id, SendPeerMessageAsync);
+        _files.SnapshotChanged += (_, _) => Publish();
         if (clipboardAdapter is not null)
         {
-            _clipboard = new ClipboardSyncService(clipboardAdapter, dataDirectory, identity.Id, SendClipboardMessageAsync);
+            _clipboard = new ClipboardSyncService(clipboardAdapter, dataDirectory, identity.Id, SendPeerMessageAsync);
             _clipboard.SnapshotChanged += (_, _) => Publish();
         }
     }
@@ -123,17 +126,45 @@ public sealed class NativeCoreClient : INativeCoreClient
         Publish();
     }
 
-    private Task<bool> SendClipboardMessageAsync(string message, CancellationToken cancellationToken) =>
+    public Task<string> SendFileAsync(string filePath, CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        return _files.StartSendFileAsync(filePath, cancellationToken);
+    }
+
+    public Task CancelFileTransferAsync(string transferId, CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        return _files.CancelTransferAsync(transferId, cancellationToken);
+    }
+
+    public async Task SetFileTransferOptionsAsync(FileTransferOptions options, CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        await _files.SetOptionsAsync(options, cancellationToken).ConfigureAwait(false);
+        Publish();
+    }
+
+    private Task<bool> SendPeerMessageAsync(string message, CancellationToken cancellationToken) =>
         _host.SendToActiveSessionAsync(message, cancellationToken);
 
-    private Task HandlePeerMessageAsync(PairedDevice device, string type, System.Text.Json.JsonElement message) =>
-        _clipboard is null ? Task.CompletedTask : _clipboard.HandlePeerMessageAsync(type, message);
-
-    private async Task UpdateClipboardSessionAsync(bool connected)
+    private async Task HandlePeerMessageAsync(PairedDevice device, string type, System.Text.Json.JsonElement message)
     {
-        if (_clipboard is null) return;
-        try { await _clipboard.SetSessionActiveAsync(connected).ConfigureAwait(false); }
-        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Clipboard session update failed: {ex}"); }
+        if (_clipboard is not null)
+            await _clipboard.HandlePeerMessageAsync(type, message).ConfigureAwait(false);
+        await _files.HandlePeerMessageAsync(type, message).ConfigureAwait(false);
+    }
+
+    private async Task UpdateSessionStatesAsync(bool connected)
+    {
+        if (_clipboard is not null)
+        {
+            try { await _clipboard.SetSessionActiveAsync(connected).ConfigureAwait(false); }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Clipboard session update failed: {ex}"); }
+        }
+
+        try { await _files.SetSessionActiveAsync(connected).ConfigureAwait(false); }
+        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"File transfer session update failed: {ex}"); }
     }
 
     public async Task<bool> ForgetDeviceAsync(string deviceId, CancellationToken cancellationToken = default)
@@ -160,7 +191,7 @@ public sealed class NativeCoreClient : INativeCoreClient
 
     private void OnHostStateChanged()
     {
-        _ = UpdateClipboardSessionAsync(_host.ConnectedDevice is not null);
+        _ = UpdateSessionStatesAsync(_host.ConnectedDevice is not null);
         Publish();
     }
 
@@ -180,7 +211,8 @@ public sealed class NativeCoreClient : INativeCoreClient
         return new NativeCoreSnapshot(
             _started, _status, nearbyPeers, _host.IsListening, _hostStatus,
             _host.PendingPairing, _host.PairedDevices, _host.ConnectedDevice,
-            _firewallStatus.IsAllowed, _firewallStatus.Message, _clipboard?.Snapshot);
+            _firewallStatus.IsAllowed, _firewallStatus.Message, _clipboard?.Snapshot,
+            _files.Snapshot);
     }
 
     private void Publish(string? status = null)
@@ -200,6 +232,7 @@ public sealed class NativeCoreClient : INativeCoreClient
             _started = false;
             _status = "Stopped";
             _clipboard?.Dispose();
+            _files.Dispose();
             await _host.DisposeAsync().ConfigureAwait(false);
             await _discovery.DisposeAsync().ConfigureAwait(false);
             Publish();

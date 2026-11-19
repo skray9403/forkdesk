@@ -4,8 +4,8 @@
 
 This document details the architectural migration of the **Forkdesk Android Client** (`android/app`) to Google's official stable milestone of **Compose Material 3 version 1.5.0** and the **Jetpack Compose November '26 Release (version 1.13.0 via BOM `2026.11.01`)**.
 
-* **Target Compose BOM:** `androidx.compose:compose-bom:2026.11.01` (was `compose-bom-beta:2026.11.00`)
-* **Target Material 3:** `androidx.compose.material3:material3:1.5.0` Stable
+* **Target Compose BOM:** `androidx.compose:compose-bom-beta:2026.11.00` (latest available on Google Maven)
+* **Target Material 3:** `1.5.0-rc01` (managed via `compose-bom-beta:2026.11.00` graduating Expressive APIs to stable)
 * **Theme Motion:** Explicitly wired `MotionScheme.expressive()` into `MaterialExpressiveTheme` in `Ui.kt`.
 * **Experimental Opt-In Cleanups:** Removed `@OptIn(ExperimentalMaterial3ExpressiveApi::class)` from `MainActivity.kt` as `FloatingActionButtonMenu` and `ToggleFloatingActionButton` have graduated to stable.
 * **CI/CD Automation:** Updated workflows (`build-android.yml` and `test.yml`) so that pushing commits to any branch triggers automatic Android builds and APK packaging.

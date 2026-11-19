@@ -15,7 +15,8 @@ public sealed record NativeCoreSnapshot(
     PairedDevice? ConnectedDevice = null,
     bool FirewallAllowed = false,
     string FirewallStatus = "",
-    ClipboardSyncSnapshot? Clipboard = null)
+    ClipboardSyncSnapshot? Clipboard = null,
+    FileTransferSnapshot? Files = null)
 {
     public static NativeCoreSnapshot Unavailable(string status) =>
         new(false, status, Array.Empty<NearbyPeer>());

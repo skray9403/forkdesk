@@ -17,6 +17,8 @@ public static class ProtocolV1
     public const int UnauthTimeoutMs = 70000;
     public const int MaxPayloadBytes = 16 * 1024 * 1024;
     public const int ClipboardMaxBytes = 256 * 1024;
+    public const int FileChunkBytes = 64 * 1024;
+    public const long FileMaxBytes = 16L * 1024 * 1024 * 1024 * 1024; // 16 TiB
     public const string SasLabel = "macshare-sas-v1";
 
     public static class PeerOs
@@ -45,6 +47,13 @@ public static class ProtocolV1
         public const string Clip = "clip";
         public const string ClipRequest = "clip.request";
         public const string ClipPolicy = "clip.policy";
+        public const string FileOffer = "file.offer";
+        public const string FileAccept = "file.accept";
+        public const string FileRefuse = "file.refuse";
+        public const string FileChunk = "file.chunk";
+        public const string FileEnd = "file.end";
+        public const string FileDone = "file.done";
+        public const string FileCancel = "file.cancel";
     }
 
     public static class Error
